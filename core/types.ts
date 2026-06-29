@@ -93,7 +93,8 @@ export interface Step {
        | 'find_and_click_optional'    
        | 'type_selector'
        | 'wait_for_login'
-       | 'upload_cover';    // search Pexels + upload to platform
+       | 'upload_cover'
+       | 'type_iframe';     // type into iframe editor
   target: string;        // selector, URL, or text to find
   value?: string;        // text to type
   reason: string;

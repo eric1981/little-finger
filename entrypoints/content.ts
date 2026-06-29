@@ -36,7 +36,14 @@ export default defineContentScript({
       
       // ── Upload cover image: search Pexels → fetch → file input → confirm ──
       if (m.type === 'UPLOAD_COVER') {
-        return uploadCoverImage(m.text || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+        return uploadCoverImage(m.text || '')
+          .then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }))
+          .catch(err => ({ type: 'ACTION_RESULT', id: m.id, success: false, error: String(err) }));
+      }
+
+      // ── Type into iframe editor ──
+      if (m.type === 'TYPE_IFRAME') {
+        return typeIntoIframe(m.selector || '', m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
       
       // ── Low-level: raw selector action ──
@@ -498,39 +505,95 @@ async function uploadCoverImage(query: string) {
     
     const imageUrl: string = searchResp.imageUrl;
     
-    // 2. Fetch image as blob (CDN images are CORS-friendly)
+    // 2. Fetch & convert to JPEG (Pexels serves WebP which Baijiahao rejects)
     const imgResp = await fetch(imageUrl);
     const blob = await imgResp.blob();
-    const file = new File([blob], 'cover.jpg', { type: blob.type || 'image/jpeg' });
+    let file: File;
+    if (blob.type === 'image/jpeg' || blob.type === 'image/png') {
+      file = new File([blob], 'cover.jpg', { type: blob.type });
+    } else {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width; canvas.height = bitmap.height;
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+      const jpegBlob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/jpeg', 0.92));
+      file = new File([jpegBlob], 'cover.jpg', { type: 'image/jpeg' });
+    }
+
+    // 3. Click cover button — platform-aware selector
+    let clickable: Element | null = null;
+    const host = location.hostname;
     
-    // 3. Click cover add button
-    const addBtn = document.querySelector('.article-cover-add');
-    if (!addBtn) return { success: false, error: '找不到封面添加按钮' };
-    
-    (addBtn as HTMLElement).click();
-    await wait(randomBetween(1000, 2000));
-    
-    // 4. Find file input (in popup/dialog)
-    const fileInput = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement;
-    if (!fileInput) return { success: false, error: '找不到文件上传输入框' };
-    
-    // 5. Set file via DataTransfer (bypasses file picker dialog)
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    fileInput.files = dt.files;
-    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-    fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-    
-    await wait(randomBetween(2000, 4000)); // wait for upload
-    
-    // 6. Click confirm button — use text-based find, not :has-text()
-    const confirmBtn = findByVisibleText('确认') || findByVisibleText('确定') || findByVisibleText('完成');
-    if (confirmBtn) {
-      (confirmBtn as HTMLElement).click();
-      await wait(1000);
+    if (host.includes('baijiahao.baidu.com')) {
+      clickable = document.evaluate(
+        '//*[@id="bjhNewsCover"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]',
+        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+      ).singleNodeValue as Element;
+    } else if (host.includes('toutiao.com')) {
+      clickable = document.querySelector('.article-cover-add');
     }
     
-    return { success: true, message: `封面图已上传` };
+    if (!clickable) return { success: false, error: '找不到封面按钮（平台: ' + host + '）' };
+
+    // Count DOM elements before click
+    const beforeEl = document.body.querySelectorAll('*').length;
+    
+    const rect = clickable.getBoundingClientRect();
+    ['pointerdown', 'pointerup', 'click'].forEach(type => {
+      clickable!.dispatchEvent(new PointerEvent(type as any, {
+        bubbles: true, cancelable: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        button: 0, pointerId: 1,
+      }));
+    });
+    
+    await wait(1500);
+    const afterEl = document.body.querySelectorAll('*').length;
+    
+    if (afterEl <= beforeEl) {
+      // No new elements = dialog didn't open
+      return { success: false, error: '封面弹窗未打开（DOM无变化）' };
+    }
+
+    // Upload file
+    let fi = document.querySelector('input[type="file"]:not([accept*="video"])') as HTMLInputElement | null;
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; document.body.appendChild(fi); }
+    const dt = new DataTransfer(); dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change', { bubbles: true }));
+    fi.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(randomBetween(3000, 5000));
+
+    const confirmBtn = findByVisibleText('确定') || findByVisibleText('确认') || findByVisibleText('完成') || findByVisibleText('保存');
+    if (!confirmBtn) return { success: false, error: '找不到确定按钮' };
+    (confirmBtn as HTMLElement).click();
+    await wait(1000);
+
+    return { success: true, message: '封面图已上传' };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Iframe Editor (Baijiahao UEditor) ───
+
+async function typeIntoIframe(selector: string, value: string) {
+  try {
+    const iframe = document.querySelector(selector) as HTMLIFrameElement;
+    if (!iframe) return { success: false, error: `找不到iframe: ${selector}` };
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return { success: false, error: 'iframe不可访问' };
+    const body = doc.body;
+    if (!body) return { success: false, error: 'iframe body未加载' };
+    body.focus();
+    await wait(randomBetween(200, 400));
+    doc.execCommand('selectAll', false);
+    await wait(50);
+    doc.execCommand('insertText', false, value);
+    body.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: value, bubbles: true }));
+    body.dispatchEvent(new Event('change', { bubbles: true }));
+    return { success: true, message: `已在iframe输入 ${value.length} 字` };
   } catch (err) {
     return { success: false, error: String(err) };
   }

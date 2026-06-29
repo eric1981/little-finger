@@ -1,6 +1,7 @@
 import { AIEngine } from '../core/ai';
 import { ZhihuAdapter, updateZhihuConfig } from '../adapters/zhihu/adapter';
 import { ToutiaoAdapter, updateToutiaoConfig } from '../adapters/toutiao/adapter';
+import { BaijiahaoAdapter, updateBaijiahaoConfig } from '../adapters/baijiahao/adapter';
 import { executeSteps } from '../core/executor';
 
 let nativePort: chrome.runtime.Port | null = null;
@@ -87,7 +88,7 @@ async function executeCommand(cmd: {
       const title = cmd.title || cmd.params?.title as string || '无标题';
       const content = cmd.content || cmd.params?.content as string || '';
 
-      let adapter: ZhihuAdapter | ToutiaoAdapter;
+      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter;
       let detectUrl: string;
 
       if (cmd.platform === 'zhihu') {
@@ -96,6 +97,9 @@ async function executeCommand(cmd: {
       } else if (cmd.platform === 'toutiao') {
         adapter = new ToutiaoAdapter();
         detectUrl = 'https://mp.toutiao.com/profile_v4/index';
+      } else if (cmd.platform === 'baijiahao') {
+        adapter = new BaijiahaoAdapter();
+        detectUrl = 'https://baijiahao.baidu.com/builder/rc/home';
       } else {
         return { success: false, message: `不支持的平台: ${cmd.platform}`, data: null };
       }

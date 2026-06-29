@@ -28,6 +28,7 @@ export default defineConfig({
       'https://mp.weixin.qq.com/*',
       'https://*.toutiao.com/*',
       'https://mp.toutiao.com/*',
+      'https://baijiahao.baidu.com/*',
       'https://juejin.cn/*',
     ],
     side_panel: {

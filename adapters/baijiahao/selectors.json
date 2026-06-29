@@ -1,0 +1,13 @@
+{
+  "editor": {
+    "titleSelector": "[data-lexical-editor=\"true\"]",
+    "bodyIframe": "#ueditor_0",
+    "publishBtn": ["发布"],
+    "coverXPath": "//*[@id=\"bjhNewsCover\"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]"
+  },
+  "stateTexts": {
+    "loggedOut": ["登录", "短信登录", "账号登录"],
+    "captcha": ["验证码", "安全验证", "滑块验证"],
+    "publishSuccess": ["发布成功", "已发布", "查看文章"]
+  }
+}
