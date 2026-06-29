@@ -1,0 +1,537 @@
+import { defineContentScript } from 'wxt/sandbox';
+
+export default defineContentScript({
+  matches: ['<all_urls>'],
+  runAt: 'document_idle',
+
+  main() {
+    console.log('[LF:CS] Injected:', window.location.href);
+
+    browser.runtime.onMessage.addListener((msg: unknown) => {
+      const m = msg as { type: string; id?: string; text?: string; value?: string; amount?: number; selector?: string; action?: string };
+      
+      if (m.type === 'SAMPLE_DOM') {
+        return Promise.resolve({ type: 'DOM_SAMPLE', id: m.id, data: sampleDom() });
+      }
+      
+      // ── High-level: find element by visible text and click ──
+      if (m.type === 'FIND_AND_CLICK') {
+        return findAndClick(m.text || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
+      // ── High-level: find input by placeholder/label and type ──
+      if (m.type === 'FIND_AND_TYPE') {
+        return findAndType(m.text || '', m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
+      // ── Page-level scroll ──
+      if (m.type === 'SCROLL_PAGE') {
+        return scrollPage(m.amount || 500).then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
+      // ── Direct CSS selector type (bypass React controlled inputs) ──
+      if (m.type === 'TYPE_SELECTOR') {
+        return typeBySelector(m.selector || m.text || '', m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
+      // ── Upload cover image: search Pexels → fetch → file input → confirm ──
+      if (m.type === 'UPLOAD_COVER') {
+        return uploadCoverImage(m.text || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
+      // ── Low-level: raw selector action ──
+      if (m.type === 'EXECUTE_ACTION') {
+        return executeAction(m as { selector: string; action: string; value?: string }).then(r => ({
+          type: 'ACTION_RESULT', id: m.id, ...r,
+        }));
+      }
+    });
+  },
+});
+
+// ─── Human-like delays ───
+
+function wait(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+// ─── Element Finders ───
+
+function findByLabel(text: string): Element | null {
+  // Try label[for] → input
+  const labels = document.querySelectorAll('label');
+  for (const label of labels) {
+    if (label.textContent?.includes(text)) {
+      const htmlFor = label.getAttribute('for');
+      if (htmlFor) {
+        const target = document.getElementById(htmlFor);
+        if (target) return target;
+      }
+      // Label wrapping input
+      const input = label.querySelector('input, textarea, select');
+      if (input) return input;
+    }
+  }
+  return null;
+}
+
+function findByPlaceholder(text: string): Element | null {
+  const inputs = document.querySelectorAll('input, textarea');
+  for (const el of inputs) {
+    if (el.getAttribute('placeholder')?.includes(text)) return el;
+  }
+  return null;
+}
+
+function findByVisibleText(text: string): Element | null {
+  // Score candidates: prefer exact match, then contains, then partial
+  const candidates = document.querySelectorAll(
+    'button, a, [role="button"], span, div, li, [class*="btn"], [class*="tab"]'
+  );
+  
+  let best: { el: Element; score: number } | null = null;
+  
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    
+    const elText = (el.textContent || '').trim();
+    if (!elText) continue;
+    
+    let score = 0;
+    if (elText === text) score = 100;
+    else if (elText.startsWith(text)) score = 80;
+    else if (elText.includes(text)) score = 50;
+    else continue;
+    
+    // Prefer buttons and links
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'button' || tag === 'a') score += 10;
+    if (el.getAttribute('role') === 'button') score += 10;
+    
+    if (!best || score > best.score) best = { el, score };
+  }
+  
+  return best?.el || null;
+}
+
+// ─── Human Behavior Simulation ───
+
+/** Human-like delay: log-normal distribution around base */
+function humanDelay(baseMs: number, variance = 0.4): number {
+  return Math.round(baseMs * (0.6 + Math.random() * variance * 2));
+}
+
+/** Thinking pause: longer, simulating reading/decision time */
+function thinkingPause(): Promise<void> {
+  return wait(randomBetween(400, 1200));
+}
+
+/** Micro-pause between words when typing */
+function wordPause(): Promise<void> {
+  return wait(randomBetween(80, 250));
+}
+
+// ─── High-Level Actions ───
+
+async function findAndClick(text: string) {
+  if (!text) return { success: false, error: 'No text to search for' };
+  
+  const el = findByVisibleText(text);
+  if (!el) return { success: false, error: `找不到包含 "${text}" 的按钮或链接` };
+  
+  try {
+    const el2 = el as HTMLElement;
+    el2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await wait(humanDelay(350, 0.5));  // scroll settle
+    
+    // Human-like: hover before click
+    el2.focus();
+    await wait(randomBetween(120, 350)); // "finding the button"
+    el2.click();
+    await wait(randomBetween(250, 600)); // post-click reaction
+    
+    return { success: true, message: `已点击 "${text}"`, selector: buildSelector(el2) };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+async function findAndType(labelOrPlaceholder: string, value: string) {
+  if (!labelOrPlaceholder) return { success: false, error: 'No label/placeholder to search for' };
+  if (!value) return { success: false, error: 'No value to type' };
+  
+  let el: HTMLElement | null = null;
+
+  // 1. Try placeholder match
+  el = findByPlaceholder(labelOrPlaceholder);
+  
+  // 2. Try label match
+  if (!el) el = findByLabel(labelOrPlaceholder);
+  
+  // 3. Try contenteditable (rich text editor like Zhihu)
+  if (!el) el = findContentEditable(labelOrPlaceholder);
+  
+  // 4. Try visible text match (input/textarea)
+  if (!el) el = findByVisibleText(labelOrPlaceholder);
+  
+  // 5. Try any input near matching text
+  if (!el) {
+    const labelEl = findByVisibleText(labelOrPlaceholder);
+    if (labelEl) {
+      el = labelEl.closest('div, form, fieldset, section')?.querySelector('input, textarea, [contenteditable="true"]') as HTMLElement | null;
+    }
+  }
+  
+  // 6. Last resort: find any contenteditable on page
+  if (!el) {
+    const editables = document.querySelectorAll('[contenteditable="true"]');
+    if (editables.length === 1) el = editables[0] as HTMLElement;
+  }
+  
+  if (!el) return { success: false, error: `找不到 "${labelOrPlaceholder}" 对应的输入框` };
+  
+  try {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await wait(300);
+    
+    // Type into input/textarea (React-controlled compat)
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      el.focus();
+      await wait(randomBetween(100, 300));
+      
+      // For React-controlled inputs, use native setter to bypass React's value tracking
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        el instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype,
+        'value'
+      )?.set;
+      
+      if (nativeSetter) {
+        // Clear via native setter
+        nativeSetter.call(el, '');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        await wait(50);
+        // Set via native setter
+        nativeSetter.call(el, value);
+      } else {
+        el.value = value;
+      }
+      
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      el.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    } else {
+      // contenteditable rich text editor (Draft.js, Quill, etc.)
+      el.focus();
+      await thinkingPause(); // "thinking about what to write"
+      
+      // Clear existing content
+      document.execCommand('selectAll', false);
+      await wait(humanDelay(80));
+      
+      // Type in chunks to simulate human writing (anti-bot)
+      const CHUNK_SIZE = 40; // characters per "burst"
+      const chunks: string[] = [];
+      for (let i = 0; i < value.length; i += CHUNK_SIZE) {
+        chunks.push(value.slice(i, i + CHUNK_SIZE));
+      }
+      
+      // First chunk replaces existing, rest append
+      for (let ci = 0; ci < chunks.length; ci++) {
+        if (ci === 0) {
+          document.execCommand('insertText', false, chunks[ci]);
+        } else {
+          // Move cursor to end before inserting
+          const sel = window.getSelection();
+          if (sel) {
+            sel.selectAllChildren(el);
+            sel.collapseToEnd();
+          }
+          document.execCommand('insertText', false, chunks[ci]);
+        }
+        
+        // Dispatch input event per chunk
+        el.dispatchEvent(new InputEvent('input', {
+          inputType: 'insertText', data: chunks[ci], bubbles: true, cancelable: true,
+        }));
+        
+        // Pause between chunks (simulates thinking)
+        if (ci < chunks.length - 1) {
+          await wait(randomBetween(200, 600)); // 0.2-0.6s per chunk
+        }
+      }
+      
+      el.dispatchEvent(new InputEvent('beforeinput', {
+        inputType: 'insertText', data: value, bubbles: true, cancelable: true,
+      }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      await wordPause(); // micro-pause after finishing
+    }
+    
+    await wait(randomBetween(200, 400));
+    
+    return { success: true, message: `已在 "${labelOrPlaceholder}" 输入 "${value.slice(0, 30)}${value.length > 30 ? '...' : ''}"`, selector: buildSelector(el) };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+function findContentEditable(contextText: string): Element | null {
+  // Find contenteditable elements, score by proximity to context text
+  const editables = document.querySelectorAll('[contenteditable="true"]');
+  if (editables.length === 0) return null;
+  
+  // Check if any label/text near the editable matches
+  for (const el of editables) {
+    const parent = el.closest('div, form, section, fieldset');
+    if (parent && parent.textContent?.includes(contextText)) {
+      return el;
+    }
+  }
+  
+  // Fallback: return the largest visible contenteditable
+  let best: { el: Element; area: number } | null = null;
+  for (const el of editables) {
+    const rect = el.getBoundingClientRect();
+    const area = rect.width * rect.height;
+    if (area > 0 && (!best || area > best.area)) {
+      best = { el, area };
+    }
+  }
+  
+  return best?.el || null;
+}
+
+async function typeBySelector(selector: string, value: string) {
+  if (!selector) return { success: false, error: 'No selector' };
+  const el = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | HTMLElement | null;
+  if (!el) return { success: false, error: `Element not found: ${selector}` };
+
+  try {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await wait(200);
+    el.focus();
+    await wait(100);
+
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      const proto = el instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
+      const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+      if (nativeSetter) {
+        nativeSetter.call(el, '');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        await wait(50);
+        nativeSetter.call(el, value);
+      } else {
+        el.value = value;
+      }
+    } else {
+      // contenteditable fallback
+      document.execCommand('selectAll', false);
+      await wait(50);
+      document.execCommand('insertText', false, value);
+    }
+
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+
+    return { success: true, message: `已通过 ${selector} 输入内容`, selector };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+async function scrollPage(amount: number) {
+  try {
+    const sign = Math.sign(amount);
+    const absAmount = Math.abs(amount) * (0.7 + Math.random() * 0.6); // ±30% jitter
+    
+    window.scrollBy({ top: sign * absAmount, behavior: 'smooth' });
+    await wait(randomBetween(300, 800));
+    
+    // Occasional micro back-scroll (re-reading)
+    if (Math.random() < 0.15) {
+      window.scrollBy({ top: sign * -(20 + Math.random() * 40), behavior: 'smooth' });
+      await wait(humanDelay(250));
+    }
+    
+    // Simulate reading pause (~30% chance)
+    if (Math.random() < 0.3) {
+      await thinkingPause();
+    }
+    
+    return { success: true, message: `页面已滚动 ${amount > 0 ? '向下' : '向上'} ${Math.round(absAmount)}px` };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── DOM Sampling ───
+
+function sampleDom() {
+  const bodyText = (document.body?.innerText || '').slice(0, 2000);
+
+  const buttons = getInteractiveElements('button, [role="button"], a.btn, a[class*="btn"], [class*="tab-item"]');
+  const inputs = getInteractiveElements('input, textarea');
+  const selects = getInteractiveElements('select');
+
+  const signals = detectSignals(bodyText);
+  const alerts = getAlertTexts();
+  const errors = getErrorTexts();
+
+  return {
+    url: window.location.href,
+    title: document.title,
+    bodyText,
+    buttons,
+    inputs,
+    selects,
+    signals,
+    alerts,
+    errors,
+  };
+}
+
+function getInteractiveElements(selector: string) {
+  return Array.from(document.querySelectorAll(selector))
+    .filter(el => {
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    })
+    .slice(0, 50)
+    .map(el => ({
+      text: (el.textContent || '').trim().slice(0, 50),
+      tag: el.tagName.toLowerCase(),
+      id: el.id,
+      className: (el as HTMLElement).className?.toString().slice(0, 80) || '',
+      type: el.getAttribute('type') || '',
+      placeholder: el.getAttribute('placeholder') || '',
+      visible: true,
+      selector: buildSelector(el as HTMLElement),
+    }));
+}
+
+function buildSelector(el: HTMLElement): string {
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  const classes = el.className?.toString().split(/\s+/).filter(c => c && !c.match(/^\d/)).slice(0, 2).join('.');
+  if (classes) return `${el.tagName.toLowerCase()}.${classes}`;
+  return el.tagName.toLowerCase();
+}
+
+function detectSignals(bodyText: string): string[] {
+  const patterns = [
+    '登录', '注册', '发布成功', '保存成功', '验证码',
+    '系统繁忙', '操作频繁', '请稍后再试', '网络错误',
+    'loading', 'Loading', '加载中', '提交中',
+  ];
+  return patterns.filter(p => bodyText.includes(p));
+}
+
+function getAlertTexts(): string[] {
+  return Array.from(document.querySelectorAll('[role="alert"], .alert, .toast, .notification, .message'))
+    .map(el => el.textContent?.trim())
+    .filter(Boolean) as string[];
+}
+
+function getErrorTexts(): string[] {
+  return Array.from(document.querySelectorAll('.error, .err-msg, [class*="error"]:not([class*="errors"])'))
+    .map(el => el.textContent?.trim())
+    .filter(Boolean)
+    .slice(0, 10) as string[];
+}
+
+// ─── Low-Level Action Execution ───
+
+async function executeAction(action: { selector: string; action: string; value?: string }) {
+  const el = document.querySelector(action.selector) as HTMLElement;
+  if (!el) return { success: false, error: `Element not found: ${action.selector}` };
+
+  try {
+    switch (action.action) {
+      case 'click':
+        el.click();
+        el.focus();
+        break;
+      case 'type':
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          el.value = action.value || '';
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        break;
+      case 'focus':
+        el.focus();
+        break;
+      case 'scroll_into_view':
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        break;
+      case 'get_text':
+        return { success: true, text: el.textContent?.trim() };
+      case 'get_value':
+        return { success: true, value: (el as HTMLInputElement).value };
+      default:
+        return { success: false, error: `Unknown action: ${action.action}` };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Cover Image Upload (Pexels via Background SW to avoid CORS) ───
+
+async function uploadCoverImage(query: string) {
+  try {
+    // 1. Search Pexels via Background SW (no CORS restrictions)
+    const searchResp = await chrome.runtime.sendMessage({
+      type: 'SEARCH_PEXELS', id: 'pexels', text: query,
+    });
+    
+    if (!searchResp?.success) {
+      return { success: false, error: searchResp?.error || 'Pexels 搜索失败' };
+    }
+    
+    const imageUrl: string = searchResp.imageUrl;
+    
+    // 2. Fetch image as blob (CDN images are CORS-friendly)
+    const imgResp = await fetch(imageUrl);
+    const blob = await imgResp.blob();
+    const file = new File([blob], 'cover.jpg', { type: blob.type || 'image/jpeg' });
+    
+    // 3. Click cover add button
+    const addBtn = document.querySelector('.article-cover-add');
+    if (!addBtn) return { success: false, error: '找不到封面添加按钮' };
+    
+    (addBtn as HTMLElement).click();
+    await wait(randomBetween(1000, 2000));
+    
+    // 4. Find file input (in popup/dialog)
+    const fileInput = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement;
+    if (!fileInput) return { success: false, error: '找不到文件上传输入框' };
+    
+    // 5. Set file via DataTransfer (bypasses file picker dialog)
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    await wait(randomBetween(2000, 4000)); // wait for upload
+    
+    // 6. Click confirm button — use text-based find, not :has-text()
+    const confirmBtn = findByVisibleText('确认') || findByVisibleText('确定') || findByVisibleText('完成');
+    if (confirmBtn) {
+      (confirmBtn as HTMLElement).click();
+      await wait(1000);
+    }
+    
+    return { success: true, message: `封面图已上传` };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+.output/
+dist/
+*.zip
+.DS_Store
+Thumbs.db
+*.log
+.wxt/
+*:Zone.Identifier

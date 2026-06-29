@@ -1,0 +1,24 @@
+{
+  "editor": {
+    "titleInput": [
+      "textarea[placeholder*=\"文章标题\"]",
+      "textarea[placeholder*=\"标题\"]",
+      "[placeholder*=\"文章标题\"]"
+    ],
+    "contentEditor": [
+      ".ProseMirror[contenteditable=\"true\"]",
+      "[contenteditable=\"true\"]"
+    ],
+    "publishBtn": [
+      "预览并发布"
+    ],
+    "confirmPublishBtn": [
+      "确认发布"
+    ]
+  },
+  "stateTexts": {
+    "loggedOut": ["登录", "账号登录", "手机登录", "注册", "验证码"],
+    "captcha": ["验证码", "安全验证", "滑块验证"],
+    "publishSuccess": ["发布成功", "已发布", "查看文章"]
+  }
+}

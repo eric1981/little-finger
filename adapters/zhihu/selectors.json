@@ -1,0 +1,22 @@
+{
+  "editor": {
+    "titleInput": [
+      "textarea[placeholder*=\"标题\"]",
+      "textarea[placeholder*=\"请输入标题\"]",
+      "[placeholder*=\"标题\"]"
+    ],
+    "contentEditor": [
+      "[contenteditable=\"true\"]",
+      ".public-DraftEditor-content"
+    ],
+    "publishBtn": [
+      "发布",
+      "发表"
+    ]
+  },
+  "stateTexts": {
+    "loggedOut": ["登录", "账号密码登录", "手机号登录", "注册", "未登录"],
+    "captcha": ["验证码", "安全验证", "滑块验证"],
+    "publishSuccess": ["发布成功", "已发布", "查看文章"]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "little-finger",
+  "version": "0.1.0",
+  "description": "AI-driven browser automation Chrome extension with platform adapters",
+  "private": true,
+  "scripts": {
+    "dev": "wxt",
+    "dev:chrome": "wxt -b chrome",
+    "build": "wxt build",
+    "build:chrome": "wxt build -b chrome",
+    "zip": "wxt zip",
+    "zip:chrome": "wxt zip -b chrome",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pinia": "^2.1.7",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@wxt-dev/module-vue": "^1.0.0",
+    "typescript": "^5.3.0",
+    "wxt": "^0.19.29"
+  }
+}
