@@ -31,6 +31,7 @@ export interface Article {
   tags?: string[];
   coverImage?: string;
   summary?: string;
+  docxB64?: string;      // base64-encoded .docx for import
   publishType: 'public' | 'draft' | 'private';
 }
 
@@ -94,7 +95,8 @@ export interface Step {
        | 'type_selector'
        | 'wait_for_login'
        | 'upload_cover'
-       | 'type_iframe';     // type into iframe editor
+       | 'type_iframe'
+       | 'import_docx';     // import .docx file into editor
   target: string;        // selector, URL, or text to find
   value?: string;        // text to type
   reason: string;

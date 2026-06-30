@@ -36,6 +36,7 @@ def publish(platform_id: str, title: str, content: str) -> dict:
         "platform": platform_id,
         "title": title,
         "content": content,
+        "params": {"docxB64": docxB64} if docxB64 else {},
     }, ensure_ascii=False)
 
     result = subprocess.run(
@@ -49,16 +50,38 @@ def publish(platform_id: str, title: str, content: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Little Finger 批量发布")
-    parser.add_argument("file", help="文章文件（第一行标题，其余正文）")
+    parser.add_argument("file", nargs="?", help="文章文件（第一行标题，剩余正文）")
+    parser.add_argument("--title", "-t", help="文章标题（--docx 时必需）")
     parser.add_argument("--platform", "-p", help="平台列表，逗号分隔（默认全部）")
+    parser.add_argument("--docx", help="docx文件路径（仅头条支持导入，需配合 --title）")
     parser.add_argument("--dry-run", action="store_true", help="只显示内容，不发布")
     args = parser.parse_args()
 
-    # 读取文章
-    text = Path(args.file).read_text(encoding="utf-8").strip()
-    lines = text.split("\n", 1)
-    title = lines[0].strip()
-    content = lines[1].strip() if len(lines) > 1 else ""
+    title = ""
+    content = ""
+
+    if args.docx:
+        # docx 导入模式
+        if not args.title:
+            print("❌ --docx 需要配合 --title 使用")
+            sys.exit(1)
+        title = args.title
+        content = f"[从 {Path(args.docx).name} 导入]"
+    elif args.file:
+        text = Path(args.file).read_text(encoding="utf-8").strip()
+        lines = text.split("\n", 1)
+        title = lines[0].strip()
+        content = lines[1].strip() if len(lines) > 1 else ""
+    else:
+        print("❌ 需要提供文章文件或 --docx + --title")
+        sys.exit(1)
+
+    # 处理 docx base64 编码
+    docxB64 = ""
+    if args.docx:
+        import base64
+        docxB64 = base64.b64encode(Path(args.docx).read_bytes()).decode()
+        print(f"📦 docx: {Path(args.docx).name} ({len(docxB64)} chars base64)")
 
     # 确定目标平台
     if args.platform:

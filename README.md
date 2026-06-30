@@ -66,9 +66,9 @@ python3 native-host/little-finger-cli.py '<JSON_COMMAND>'
 
 **批量发布（推荐）：**
 ```bash
-python3 publish.py article.txt                          # 全部平台
+python3 publish.py article.txt                          # 全部平台（文件模式）
 python3 publish.py article.txt -p zhihu                 # 指定平台
-python3 publish.py article.txt -p zhihu,toutiao         # 多平台
+python3 publish.py --docx report.docx --title "标题" -p toutiao  # docx导入
 python3 publish.py article.txt --dry-run                # 预览不发布
 ```
 

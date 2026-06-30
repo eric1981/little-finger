@@ -117,7 +117,8 @@ async function executeCommand(cmd: {
         }
       } catch { /* proceed without state */ }
 
-      const steps = Array.from(adapter.publish({ title, content, publishType: 'public' }, state));
+      const docxB64 = cmd.params?.docxB64 as string | undefined;
+      const steps = Array.from(adapter.publish({ title, content, publishType: 'public', docxB64 }, state));
       const result = await executeSteps(tab.id, steps, (msg, type) => {
         console.log(`[LF:BG] ${type}: ${msg}`);
       });

@@ -128,6 +128,12 @@ function executeOneStep(
         });
         break;
 
+      case 'import_docx':
+        chrome.tabs.sendMessage(tabId, { type: 'IMPORT_DOCX', id: 'docx', value: step.value, selector: step.target }, (r) => {
+          resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'docx导入失败' });
+        });
+        break;
+
       case 'wait_for_login':
         waitForLogin(tabId, step, onProgress).then(resolve);
         break;

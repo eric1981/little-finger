@@ -49,8 +49,14 @@ export class ToutiaoAdapter {
 
     yield { type: 'wait', target: '5000', reason: '等待编辑器完全加载' };
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
-    yield { type: 'find_and_type_rich', target: config.contentText, value: article.content, reason: '填入正文' };
-    yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
+    
+    if (article.docxB64) {
+      yield { type: 'import_docx', target: '.syl-toolbar-button', value: article.docxB64, reason: '导入docx文件' };
+      yield { type: 'wait', target: '6000', reason: '等待docx解析' };
+    } else {
+      yield { type: 'find_and_type_rich', target: config.contentText, value: article.content, reason: '填入正文' };
+      yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
+    }
 
     yield { type: 'upload_cover', target: article.title, reason: '搜索并上传封面图' };
     yield { type: 'wait', target: '2000', reason: '等待封面上传完成' };

@@ -45,6 +45,11 @@ export default defineContentScript({
       if (m.type === 'TYPE_IFRAME') {
         return typeIntoIframe(m.selector || '', m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
+
+      // ── Import .docx file ──
+      if (m.type === 'IMPORT_DOCX') {
+        return importDocx(m.value || '', m.selector || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
       
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
@@ -594,6 +599,44 @@ async function typeIntoIframe(selector: string, value: string) {
     body.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: value, bubbles: true }));
     body.dispatchEvent(new Event('change', { bubbles: true }));
     return { success: true, message: `已在iframe输入 ${value.length} 字` };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Import .docx file (Toutiao) ───
+
+async function importDocx(base64Content: string, btnSelector: string) {
+  try {
+    // 1. Click import button
+    const importBtn = document.querySelector(btnSelector || '.syl-toolbar-button') as HTMLElement | null;
+    if (!importBtn) return { success: false, error: '找不到导入按钮' };
+    importBtn.click();
+    await wait(randomBetween(1000, 2000));
+
+    // 2. Find the file input that appeared
+    let fi = document.querySelector('input[type="file"][accept*="doc"]') as HTMLInputElement | null;
+    if (!fi) fi = document.querySelector('input[type="file"]:not([accept*="image"])') as HTMLInputElement | null;
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc'; document.body.appendChild(fi); }
+
+    // 3. Decode base64 to binary and create File
+    const binary = atob(base64Content);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const file = new File([blob], 'import.docx', { type: blob.type });
+
+    // 4. Set file via DataTransfer
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change', { bubbles: true }));
+    fi.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // 5. Wait for import + content parsing
+    await wait(randomBetween(5000, 8000));
+
+    return { success: true, message: 'docx文件已导入' };
   } catch (err) {
     return { success: false, error: String(err) };
   }
