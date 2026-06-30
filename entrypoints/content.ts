@@ -1,4 +1,5 @@
 import { defineContentScript } from 'wxt/sandbox';
+import * as mammoth from 'mammoth';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -789,26 +790,15 @@ async function bjhImportDocx(base64Content: string) {
 
 async function zhihuImportDocx(base64Content: string) {
   try {
-    // Load mammoth.js from extension bundle (avoids CSP issues)
-    if (!(window as any).__mammothLoaded) {
-      await new Promise<void>((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = chrome.runtime.getURL('mammoth.js');
-        s.onload = () => { (window as any).__mammothLoaded = true; resolve(); };
-        s.onerror = () => reject(new Error('mammoth.js 加载失败'));
-        document.head.appendChild(s);
-      });
-    }
-
     // Convert base64 to ArrayBuffer
     const binary = atob(base64Content);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
-    // Convert docx to HTML via mammoth
-    const result: any = await (window as any).mammoth.convertToHtml({arrayBuffer: bytes.buffer});
-    const html = result.value as string;
-    console.log('[LF:CS] mammoth converted:', html.length, 'chars, warnings:', result.messages?.length || 0);
+    // Convert docx to HTML via mammoth (bundled, no CSP issue)
+    const result = await mammoth.convertToHtml({arrayBuffer: bytes.buffer});
+    const html = result.value;
+    console.log('[LF:CS] mammoth:', html.length, 'chars, warnings:', result.messages.length);
 
     // Find editor and insert HTML
     const el = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
