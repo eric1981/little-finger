@@ -782,9 +782,14 @@ async function zhihuImportDocx(base64Content: string) {
     const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
     const file = new File([blob], 'import.docx', { type: blob.type });
     const dt = new DataTransfer(); dt.items.add(file);
+    
+    // Simulate real file selection sequence (focus → set → change → blur)
+    fi.focus();
+    fi.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
     fi.files = dt.files;
     fi.dispatchEvent(new Event('change', { bubbles: true }));
-    fi.dispatchEvent(new Event('input', { bubbles: true }));
+    fi.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    fi.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
     await wait(randomBetween(5000, 8000));
     return { success: true, message: 'docx文件已导入' };
   } catch (err) {
