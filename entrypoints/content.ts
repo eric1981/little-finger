@@ -568,7 +568,7 @@ async function uploadCoverImage(query: string) {
     // 3b. Baijiahao: click "本地上传" in the dialog
     if (host.includes('baijiahao.baidu.com')) {
       const localUpload = document.evaluate(
-        '//*[@id="rc-tabs-0-panel-local_main"]/div/div[1]/div[1]/div/div/span/div/span/div/div[2]',
+        '//*[@id="rc-tabs-0-panel-local_main"]/div/div[1]/div[1]/div/div/span/div/span/div',
         document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
       ).singleNodeValue as HTMLElement;
       if (localUpload) {
