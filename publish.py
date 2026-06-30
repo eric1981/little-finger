@@ -43,10 +43,10 @@ def kill_zombies():
         pass
 
 
-def publish(platform: dict, title: str, content: str, docxB64: str) -> dict:
-    """向单个平台发布，支持重试。返回 {'success': bool, 'message': str}"""
+def publish(platform: dict, title: str, content: str, docxB64: str, action: str = 'publish_article') -> dict:
+    """向单个平台发布或获取URL，支持重试"""
     cmd = json.dumps({
-        "action": "publish_article",
+        "action": action,
         "platform": platform["id"],
         "title": title,
         "content": content,
@@ -99,13 +99,19 @@ def main():
     parser.add_argument("--title", "-t", help="文章标题（--docx 时必需）")
     parser.add_argument("--platform", "-p", help="平台列表，逗号分隔（默认全部）")
     parser.add_argument("--docx", help="docx文件路径（需配合 --title）")
+    parser.add_argument("--get-url", action="store_true", help="只获取文章URL（不发布）")
     parser.add_argument("--dry-run", action="store_true", help="只显示内容，不发布")
     args = parser.parse_args()
 
     title = ""
     content = ""
 
-    if args.docx:
+    if args.get_url:
+        if not args.platform:
+            args.platform = "zhihu,toutiao,baijiahao"
+        title = "get-url"  # placeholder
+        content = ""
+    elif args.docx:
         if not args.title:
             print("❌ --docx 需要配合 --title 使用")
             sys.exit(1)
@@ -174,12 +180,17 @@ def main():
         label = f"{p['name']}"
         print(f"⏳ {label} ...", end=" ", flush=True)
         t0 = time.time()
-        result = publish(p, title, content, docxB64)
+        action = 'get_article_url' if args.get_url else 'publish_article'
+        result = publish(p, title, content, docxB64, action)
         elapsed = time.time() - t0
         results[p["id"]] = result
 
         if result.get("success"):
-            print(f"✅ ({elapsed:.0f}s)")
+            url = result.get("data", {}).get("url", "")
+            if url:
+                print(f"🔗 {url}")
+            else:
+                print(f"✅ ({elapsed:.0f}s)")
         else:
             error = result.get("error") or result.get("message", "unknown")
             print(f"❌ {error} ({elapsed:.0f}s)")
