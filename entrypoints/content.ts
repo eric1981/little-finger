@@ -255,7 +255,13 @@ async function findAndType(labelOrPlaceholder: string, value: string) {
       document.execCommand('selectAll', false);
       await wait(humanDelay(80));
       
-      // Type in chunks to simulate human writing (anti-bot)
+      // HTML content (from docx conversion): use insertHTML once
+      if (/^<[a-z]+[>\s]/.test(value)) {
+        document.execCommand('insertHTML', false, value);
+        el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+      // Plain text: type in chunks to simulate human writing (anti-bot)
       const CHUNK_SIZE = 40; // characters per "burst"
       const chunks: string[] = [];
       for (let i = 0; i < value.length; i += CHUNK_SIZE) {
@@ -286,6 +292,7 @@ async function findAndType(labelOrPlaceholder: string, value: string) {
           await wait(randomBetween(200, 600)); // 0.2-0.6s per chunk
         }
       }
+      } // end else (plain text)
       
       el.dispatchEvent(new InputEvent('beforeinput', {
         inputType: 'insertText', data: value, bubbles: true, cancelable: true,

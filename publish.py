@@ -92,11 +92,27 @@ def main():
         z = zipfile.ZipFile(str(docxPath))
         xml = z.read('word/document.xml')
         root = ET.fromstring(xml)
-        NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+        def para_to_html(p):
+            parts = []
+            for run in p.iter(f'{{{NS}}}r'):
+                tps = [t.text or '' for t in run.iter(f'{{{NS}}}t')]
+                txt = ''.join(tps)
+                if not txt.strip(): continue
+                bold = any(b.get(f'{{{NS}}}val') != '0' for b in run.iter(f'{{{NS}}}b') if b.get(f'{{{NS}}}val'))
+                italic = any(i.get(f'{{{NS}}}val') != '0' for i in run.iter(f'{{{NS}}}i') if i.get(f'{{{NS}}}val'))
+                if bold and italic: txt = f'<strong><em>{txt}</em></strong>'
+                elif bold: txt = f'<strong>{txt}</strong>'
+                elif italic: txt = f'<em>{txt}</em>'
+                parts.append(txt)
+            return '<p>' + ''.join(parts) + '</p>'
+
+        import re
         paras = []
         for p in root.iter(f'{{{NS}}}p'):
-            line = ''.join(t.text or '' for t in p.iter(f'{{{NS}}}t'))
-            paras.append(line)
+            h = para_to_html(p)
+            if re.search(r'[^\s<>]', h):
+                paras.append(h)
         docxText = '\n'.join(paras)
         print(f"📝 提取文本: {len(docxText)} 字, {len(paras)} 段")
 
