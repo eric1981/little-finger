@@ -3,8 +3,8 @@
     "titleSelector": "[data-lexical-editor=\"true\"]",
     "bodyIframe": "#ueditor_0",
     "publishBtn": ["发布"],
-    "coverXPath": "//*[@id=\"bjhNewsCover\"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]",
-    "localUploadXPath": "//input[@name='media' and @type='file']",
+    "coverBtnXPath": "//*[@id=\"bjhNewsCover\"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]",
+    "coverInput": "input[name=\"media\"][type=\"file\"]",
     "importDocx": {
       "hoverXPath": "//*[@id=\"edui40_state\"]/div[2]",
       "menuXPath": "/html/body/div[5]/div/div/div/div/div/div[2]/div[2]/div[8]/div[2]",

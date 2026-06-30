@@ -548,7 +548,7 @@ function reactClick(el: Element | null): boolean {
 
 // ─── Cover Image Upload (Pexels via Background SW to avoid CORS) ───
 
-async function uploadCoverImage(query: string, localUploadXPath: string = '') {
+async function uploadCoverImage(query: string, coverInputSelector: string = '') {
   try {
     // 1. Search Pexels via Background SW (no CORS restrictions)
     const searchResp = await chrome.runtime.sendMessage({
@@ -611,16 +611,13 @@ async function uploadCoverImage(query: string, localUploadXPath: string = '') {
       return { success: false, error: '封面弹窗未打开（DOM无变化）' };
     }
 
-    // 3b. Baijiahao: directly find the hidden cover input, skip "本地上传"
+    // 3b. Find file input (from adapter config)
     let fi: HTMLInputElement | null = null;
     
-    if (host.includes('baijiahao.baidu.com')) {
-      // The dialog has a hidden <input name="media" type="file" accept="image/*">
-      fi = document.querySelector('input[name="media"][type="file"]') as HTMLInputElement | null;
-      if (!fi) fi = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement | null;
-    } else {
-      fi = document.querySelector('input[type="file"]:not([accept*="video"])') as HTMLInputElement | null;
+    if (coverInputSelector) {
+      fi = document.querySelector(coverInputSelector) as HTMLInputElement | null;
     }
+    if (!fi) fi = document.querySelector('input[type="file"]:not([accept*="video"])') as HTMLInputElement | null;
     
     if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; document.body.appendChild(fi); }
     const dt = new DataTransfer(); dt.items.add(file);
