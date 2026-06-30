@@ -1,66 +1,104 @@
 #!/usr/bin/env python3
 """
-Little Finger 批量发布入口
+Little Finger 批量发布入口 — 生产级
 用法:
-  python3 publish.py article.txt                      # 发布到所有平台
-  python3 publish.py article.txt --platform zhihu     # 指定平台
-  python3 publish.py article.txt --platform zhihu,toutiao,baijiahao
+  python3 publish.py article.txt                          # 文件模式-全部平台
+  python3 publish.py article.txt -p zhihu                 # 文件模式-指定平台
+  python3 publish.py --docx report.docx --title "标题" -p toutiao  # docx导入
+  python3 publish.py --docx report.docx --title "标题"             # 全部平台
 
-文件格式:
-  第一行 = 标题
-  其余行 = 正文（Markdown）
-
-新增平台：只需在 PLATFORMS 数组中加一行即可。
+平台注册表:
+  新增平台只需在 PLATFORMS 中加一行，无需改其他代码。
 """
 
-import subprocess, json, sys, time, argparse
+import subprocess, json, sys, time, argparse, os
 from pathlib import Path
 
 CLI = Path(__file__).parent / 'native-host' / 'little-finger-cli.py'
 
 # ═══════════════════════════════════════════════
-# 平台注册表 — 新增平台只需在此加一行
+# 平台注册表 — 新增平台在此加一行
 # ═══════════════════════════════════════════════
 PLATFORMS: list[dict] = [
-    {"id": "zhihu",    "name": "知乎",   "maxTitle": 50},
-    {"id": "toutiao",  "name": "头条号", "maxTitle": 35},
-    {"id": "baijiahao","name": "百家号", "maxTitle": 64},
+    {"id": "zhihu",    "name": "知乎",   "timeout": 180},
+    {"id": "toutiao",  "name": "头条号", "timeout": 180},
+    {"id": "baijiahao","name": "百家号", "timeout": 180},
 ]
 
-TIMEOUT = 130  # seconds per platform
+DEFAULT_TIMEOUT = 150
+MAX_RETRIES = 1  # retry once on timeout/connection error
 
-def publish(platform_id: str, title: str, content: str, docxB64: str = "") -> dict:
-    """向单个平台发布，返回 {'success': bool, 'message': str}"""
+
+def kill_zombies():
+    """Auto-kill stale native host processes before publishing"""
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "little-finger-host.py"],
+            capture_output=True, text=True, timeout=3,
+        )
+        for pid in result.stdout.strip().split():
+            if pid:
+                os.kill(int(pid), 9)
+    except Exception:
+        pass
+
+
+def publish(platform: dict, title: str, content: str, docxB64: str) -> dict:
+    """向单个平台发布，支持重试。返回 {'success': bool, 'message': str}"""
     cmd = json.dumps({
         "action": "publish_article",
-        "platform": platform_id,
+        "platform": platform["id"],
         "title": title,
         "content": content,
         "params": {"docxB64": docxB64} if docxB64 else {},
     }, ensure_ascii=False)
 
-    # Write to temp file (avoids "Argument list too long" for large docx)
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
-        f.write(cmd)
-        tmp = f.name
+    timeout = platform.get("timeout", DEFAULT_TIMEOUT)
 
-    result = subprocess.run(
-        [sys.executable, str(CLI), '--file', tmp],
-        capture_output=True, text=True, timeout=TIMEOUT,
-    )
-    Path(tmp).unlink(missing_ok=True)
-    try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return {"success": False, "error": result.stdout.strip() or result.stderr.strip()}
+    for attempt in range(MAX_RETRIES + 1):
+        import tempfile
+
+        # Write to temp file (avoids "Argument list too long" for large docx)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+            f.write(cmd)
+            tmp_path = f.name
+
+        try:
+            result = subprocess.run(
+                [sys.executable, str(CLI), '--file', tmp_path],
+                capture_output=True, text=True, timeout=timeout,
+            )
+            resp = json.loads(result.stdout)
+        except subprocess.TimeoutExpired:
+            resp = {"success": False, "error": f"Timeout after {timeout}s"}
+        except json.JSONDecodeError:
+            resp = {"success": False, "error": result.stdout.strip() or "unknown"}
+        except Exception as e:
+            resp = {"success": False, "error": str(e)}
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        if resp.get("success"):
+            return resp
+
+        # Only retry on timeout/connection errors
+        error = resp.get("error", resp.get("message", ""))
+        if "Timeout" not in error and "connect" not in error.lower():
+            return resp
+
+        if attempt < MAX_RETRIES:
+            kill_zombies()
+            time.sleep(3)
+
+    return resp
+
 
 def main():
     parser = argparse.ArgumentParser(description="Little Finger 批量发布")
     parser.add_argument("file", nargs="?", help="文章文件（第一行标题，剩余正文）")
     parser.add_argument("--title", "-t", help="文章标题（--docx 时必需）")
     parser.add_argument("--platform", "-p", help="平台列表，逗号分隔（默认全部）")
-    parser.add_argument("--docx", help="docx文件路径（仅头条支持导入，需配合 --title）")
+    parser.add_argument("--docx", help="docx文件路径（需配合 --title）")
     parser.add_argument("--dry-run", action="store_true", help="只显示内容，不发布")
     args = parser.parse_args()
 
@@ -68,7 +106,6 @@ def main():
     content = ""
 
     if args.docx:
-        # docx 导入模式
         if not args.title:
             print("❌ --docx 需要配合 --title 使用")
             sys.exit(1)
@@ -83,46 +120,36 @@ def main():
         print("❌ 需要提供文章文件或 --docx + --title")
         sys.exit(1)
 
-    # 处理 docx base64 编码 + 文本提取（知乎用）
+    # Docx base64 encoding + text extraction
     docxB64 = ""
     docxText = ""
     if args.docx:
         import base64, zipfile, xml.etree.ElementTree as ET
+
         docxPath = Path(args.docx)
-        if not docxPath.exists() and '\\' in args.docx:
-            wslPath = '/mnt/' + args.docx.replace(':\\', '/').replace('\\', '/').lower()
+        # Auto-translate Windows paths to WSL
+        if not docxPath.exists() and "\\" in args.docx:
+            wslPath = "/mnt/" + args.docx.replace(":\\", "/").replace("\\", "/").lower()
             docxPath = Path(wslPath)
+
+        # Base64 for Toutiao/Baijiahao injection
         docxB64 = base64.b64encode(docxPath.read_bytes()).decode()
-        print(f"📦 docx: {docxPath.name} ({len(docxB64)} chars base64)")
 
-        # Extract text for Zhihu (no docx injection needed)
-        z = zipfile.ZipFile(str(docxPath))
-        xml = z.read('word/document.xml')
-        root = ET.fromstring(xml)
-        NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+        # Text extraction for stats display
+        try:
+            z = zipfile.ZipFile(str(docxPath))
+            xml_data = z.read('word/document.xml')
+            root = ET.fromstring(xml_data)
+            NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+            paras = []
+            for p in root.iter(f'{{{NS}}}p'):
+                line = ''.join(t.text or '' for t in p.iter(f'{{{NS}}}t'))
+                paras.append(line)
+            docxText = '\n'.join(paras)
+        except Exception:
+            pass
 
-        def para_to_html(p):
-            parts = []
-            for run in p.iter(f'{{{NS}}}r'):
-                tps = [t.text or '' for t in run.iter(f'{{{NS}}}t')]
-                txt = ''.join(tps)
-                if not txt.strip(): continue
-                bold = any(b.get(f'{{{NS}}}val') != '0' for b in run.iter(f'{{{NS}}}b') if b.get(f'{{{NS}}}val'))
-                italic = any(i.get(f'{{{NS}}}val') != '0' for i in run.iter(f'{{{NS}}}i') if i.get(f'{{{NS}}}val'))
-                if bold and italic: txt = f'<strong><em>{txt}</em></strong>'
-                elif bold: txt = f'<strong>{txt}</strong>'
-                elif italic: txt = f'<em>{txt}</em>'
-                parts.append(txt)
-            return '<p>' + ''.join(parts) + '</p>'
-
-        import re
-        paras = []
-        for p in root.iter(f'{{{NS}}}p'):
-            h = para_to_html(p)
-            if re.search(r'[^\s<>]', h):
-                paras.append(h)
-        docxText = '\n'.join(paras)
-        print(f"📝 提取文本: {len(docxText)} 字, {len(paras)} 段")
+        print(f"📦 {docxPath.name} | base64: {len(docxB64)} chars | 文本: {len(docxText)} 字, {len(paras)} 段")
 
     # 确定目标平台
     if args.platform:
@@ -132,34 +159,42 @@ def main():
         targets = PLATFORMS
 
     print(f"📄 标题: {title}")
-    print(f"📝 正文: {len(content)} 字")
-    print(f"🎯 平台: {', '.join(p['name'] for p in targets)}")
-    print()
+    print(f"🎯 平台: {', '.join(p['name'] for p in targets)}\n")
 
     if args.dry_run:
         print("[DRY RUN] 跳过发布")
         return
 
+    # 清理僵尸进程
+    kill_zombies()
+
+    # 发布
     results = {}
     for p in targets:
-        print(f"⏳ {p['name']} 发布中...", end=" ", flush=True)
+        label = f"{p['name']}"
+        print(f"⏳ {label} ...", end=" ", flush=True)
         t0 = time.time()
-        result = publish(p["id"], title, content, docxB64)
+        result = publish(p, title, content, docxB64)
         elapsed = time.time() - t0
         results[p["id"]] = result
 
         if result.get("success"):
             print(f"✅ ({elapsed:.0f}s)")
         else:
-            print(f"❌ {result.get('error') or result.get('message', 'unknown')} ({elapsed:.0f}s)")
+            error = result.get("error") or result.get("message", "unknown")
+            print(f"❌ {error} ({elapsed:.0f}s)")
 
-    print(f"\n📊 结果: ", end="")
+    # 汇总
     success = sum(1 for r in results.values() if r.get("success"))
     fail = len(results) - success
+    print()
     if fail == 0:
-        print(f"全部成功 ✅")
+        print(f"🎉 全部成功 ({success}/{success})")
     else:
-        print(f"{success} 成功 / {fail} 失败")
+        print(f"✅ {success} / ❌ {fail}")
+        failed = [pid for pid, r in results.items() if not r.get("success")]
+        print(f"失败: {', '.join(failed)} — 重试: python3 publish.py ... -p {','.join(failed)}")
+
 
 if __name__ == "__main__":
     main()
