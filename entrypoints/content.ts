@@ -800,14 +800,24 @@ async function zhihuImportDocx(base64Content: string) {
     const html = result.value;
     console.log('[LF:CS] mammoth:', html.length, 'chars, warnings:', result.messages.length);
 
-    // Find editor and insert HTML
+    // Find editor and insert via paste event (Draft.js handles paste)
     const el = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
     if (!el) return { success: false, error: '找不到编辑器' };
     el.focus();
+
+    // Clear existing
     document.execCommand('selectAll', false);
-    document.execCommand('insertHTML', false, html);
-    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    document.execCommand('delete', false);
+    
+    // Create paste event with HTML data
+    const pasteEvent = new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: new DataTransfer(),
+    } as any);
+    (pasteEvent.clipboardData as DataTransfer).setData('text/html', html);
+    (pasteEvent.clipboardData as DataTransfer).setData('text/plain', html.replace(/<[^>]*>/g, ''));
+    el.dispatchEvent(pasteEvent);
     await wait(2000);
 
     return { success: true, message: 'docx文件已导入（mammoth HTML）' };
