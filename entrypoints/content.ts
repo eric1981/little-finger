@@ -796,6 +796,11 @@ async function zhihuImportDocx(base64Content: string) {
     fi.dispatchEvent(new Event('change', { bubbles: true }));
     fi.dispatchEvent(new Event('input', { bubbles: true }));
     await wait(randomBetween(5000, 8000));
+
+    // Step 4: click the uploaded file to select it
+    const fileSelector = document.querySelector('div[class*="css-175oi2r"][class*="r-1loqt21"][class*="r-1otgn73"]') as HTMLElement | null;
+    if (fileSelector) { fileSelector.click(); await wait(500); }
+    
     return { success: true, message: 'docx文件已导入' };
   } catch (err) {
     return { success: false, error: String(err) };
