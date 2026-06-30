@@ -591,22 +591,18 @@ async function uploadCoverImage(query: string, localUploadXPath: string = '') {
     
     if (!clickable) return { success: false, error: '找不到封面按钮（平台: ' + host + '）' };
 
-    // Use reactClick for all Baijiahao clicks, native for others
     const beforeEl = document.body.querySelectorAll('*').length;
     
-    if (host.includes('baijiahao.baidu.com')) {
-      reactClick(clickable);
-    } else {
-      const rect = clickable.getBoundingClientRect();
-      ['pointerdown', 'pointerup', 'click'].forEach(type => {
-        clickable!.dispatchEvent(new PointerEvent(type as any, {
-          bubbles: true, cancelable: true,
-          clientX: rect.left + rect.width / 2,
-          clientY: rect.top + rect.height / 2,
-          button: 0, pointerId: 1,
-        }));
-      });
-    }
+    // Cover button: PointerEvent (this was working before)
+    const rect = clickable.getBoundingClientRect();
+    ['pointerdown', 'pointerup', 'click'].forEach(type => {
+      clickable!.dispatchEvent(new PointerEvent(type as any, {
+        bubbles: true, cancelable: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        button: 0, pointerId: 1,
+      }));
+    });
     
     await wait(1500);
     const afterEl = document.body.querySelectorAll('*').length;

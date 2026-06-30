@@ -4,7 +4,7 @@
     "bodyIframe": "#ueditor_0",
     "publishBtn": ["发布"],
     "coverXPath": "//*[@id=\"bjhNewsCover\"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]",
-    "localUploadXPath": "/html/body/div[7]/div/div[2]/div/div[1]/div/div/div/div[2]/div/div/div/div[1]/div[1]/div/div/span/div",
+    "localUploadXPath": "//input[@name='media' and @type='file']",
     "importDocx": {
       "hoverXPath": "//*[@id=\"edui40_state\"]/div[2]",
       "menuXPath": "/html/body/div[5]/div/div/div/div/div/div[2]/div[2]/div[8]/div[2]",
