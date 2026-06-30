@@ -53,8 +53,14 @@ export class ZhihuAdapter {
     }
 
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
-    yield { type: 'find_and_type_rich', target: config.contentText, value: article.content, reason: '填入正文' };
-    yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
+    
+    if (article.docxB64) {
+      yield { type: 'import_docx_zhihu', target: '', value: article.docxB64, reason: '导入docx文件' };
+      yield { type: 'wait', target: '8000', reason: '等待docx解析' };
+    } else {
+      yield { type: 'find_and_type_rich', target: config.contentText, value: article.content, reason: '填入正文' };
+      yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
+    }
     yield { type: 'find_and_click', target: config.publishText, reason: '点击发布' };
     yield { type: 'wait', target: '3000', reason: '等待发布处理' };
     yield { type: 'find_and_click_optional', target: config.confirmText, reason: '确认发布（如不需要则跳过）' };

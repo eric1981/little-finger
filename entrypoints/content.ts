@@ -55,6 +55,11 @@ export default defineContentScript({
       if (m.type === 'IMPORT_DOCX_BJH') {
         return bjhImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
+
+      // ── Import .docx file (Zhihu 2-step: click 导入 → click 导入文档) ──
+      if (m.type === 'IMPORT_DOCX_ZHIHU') {
+        return zhihuImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
       
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
@@ -757,6 +762,40 @@ async function bjhImportDocx(base64Content: string) {
     fi.dispatchEvent(new Event('input', { bubbles: true }));
     await wait(randomBetween(5000, 8000));
 
+    return { success: true, message: 'docx文件已导入' };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Import .docx file (Zhihu — 2 step flow) ───
+
+async function zhihuImportDocx(base64Content: string) {
+  try {
+    const importSpan = document.querySelector('span.css-8atqhb') as HTMLElement | null;
+    if (!importSpan) return { success: false, error: '找不到导入按钮' };
+    importSpan.click();
+    await wait(randomBetween(500, 1000));
+
+    const docBtn = document.querySelector('button[aria-label="导入文档"]') as HTMLElement | null;
+    if (!docBtn) return { success: false, error: '找不到导入文档按钮' };
+    docBtn.click();
+    await wait(randomBetween(500, 1000));
+
+    let fi = document.querySelector('input[type="file"][accept*=".docx"]') as HTMLInputElement | null;
+    if (!fi) fi = document.querySelector('input[type="file"][accept*="doc"]') as HTMLInputElement | null;
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc,.md'; document.body.appendChild(fi); }
+
+    const binary = atob(base64Content);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const file = new File([blob], 'import.docx', { type: blob.type });
+    const dt = new DataTransfer(); dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change', { bubbles: true }));
+    fi.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(randomBetween(5000, 8000));
     return { success: true, message: 'docx文件已导入' };
   } catch (err) {
     return { success: false, error: String(err) };

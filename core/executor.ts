@@ -140,6 +140,12 @@ function executeOneStep(
         });
         break;
 
+      case 'import_docx_zhihu':
+        chrome.tabs.sendMessage(tabId, { type: 'IMPORT_DOCX_ZHIHU', id: 'docx', value: step.value }, (r) => {
+          resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'docx导入失败' });
+        });
+        break;
+
       case 'wait_for_login':
         waitForLogin(tabId, step, onProgress).then(resolve);
         break;
