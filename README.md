@@ -59,8 +59,27 @@ Agent (Hermes)
 
 ### CLI 命令格式
 
+**单平台发布：**
 ```bash
-python3 /home/eric/little-finger/native-host/little-finger-cli.py '<JSON_COMMAND>'
+python3 native-host/little-finger-cli.py '<JSON_COMMAND>'
+```
+
+**批量发布（推荐）：**
+```bash
+python3 publish.py article.txt                          # 全部平台
+python3 publish.py article.txt -p zhihu                 # 指定平台
+python3 publish.py article.txt -p zhihu,toutiao         # 多平台
+python3 publish.py article.txt --dry-run                # 预览不发布
+```
+
+文章文件格式：第一行标题，其余正文（Markdown）。
+
+新增平台只需在 `publish.py` 的 `PLATFORMS` 数组中加一行：
+```python
+{"id": "wechat", "name": "公众号", "maxTitle": 64},
+```
+
+### CLI 单平台 JSON 格式
 ```
 
 阻塞执行，超时 120 秒。返回 JSON 到 stdout。
@@ -241,6 +260,18 @@ little-finger/
 | `sample` | 标签 | — | DOM 采样 |
 | `wait_for_login` | 域名 | — | 轮询等待登录 |
 | `check` | 消息 | — | 终止信号 |
+
+---
+
+### 平台标题字数限制
+
+| 平台 | 限制 | 超出后果 |
+|------|------|---------|
+| 知乎 | 50 字 | 截断 |
+| 头条号 | 35 字 | 截断 |
+| 百家号 | 64 字 | 截断 |
+
+`publish.py` 不会自动截断标题，请在文案阶段控制。
 
 ---
 
