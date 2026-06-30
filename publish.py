@@ -76,17 +76,29 @@ def main():
         print("❌ 需要提供文章文件或 --docx + --title")
         sys.exit(1)
 
-    # 处理 docx base64 编码
+    # 处理 docx base64 编码 + 文本提取（知乎用）
     docxB64 = ""
+    docxText = ""
     if args.docx:
-        import base64
+        import base64, zipfile, xml.etree.ElementTree as ET
         docxPath = Path(args.docx)
-        # Auto-translate Windows paths to WSL (/mnt/c/...)
         if not docxPath.exists() and '\\' in args.docx:
             wslPath = '/mnt/' + args.docx.replace(':\\', '/').replace('\\', '/').lower()
             docxPath = Path(wslPath)
         docxB64 = base64.b64encode(docxPath.read_bytes()).decode()
         print(f"📦 docx: {docxPath.name} ({len(docxB64)} chars base64)")
+
+        # Extract text for Zhihu (no docx injection needed)
+        z = zipfile.ZipFile(str(docxPath))
+        xml = z.read('word/document.xml')
+        root = ET.fromstring(xml)
+        NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+        paras = []
+        for p in root.iter(f'{{{NS}}}p'):
+            line = ''.join(t.text or '' for t in p.iter(f'{{{NS}}}t'))
+            paras.append(line)
+        docxText = '\n'.join(paras)
+        print(f"📝 提取文本: {len(docxText)} 字, {len(paras)} 段")
 
     # 确定目标平台
     if args.platform:
@@ -108,7 +120,14 @@ def main():
     for p in targets:
         print(f"⏳ {p['name']} 发布中...", end=" ", flush=True)
         t0 = time.time()
-        result = publish(p["id"], title, content, docxB64)
+        # Zhihu: use extracted text as content (no docx injection)
+        if p['id'] == 'zhihu' and docxText:
+            zContent = docxText
+            zDocxB64 = ''
+        else:
+            zContent = content
+            zDocxB64 = docxB64
+        result = publish(p["id"], title, zContent, zDocxB64)
         elapsed = time.time() - t0
         results[p["id"]] = result
 
