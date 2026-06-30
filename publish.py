@@ -137,14 +137,7 @@ def main():
     for p in targets:
         print(f"⏳ {p['name']} 发布中...", end=" ", flush=True)
         t0 = time.time()
-        # Zhihu: use extracted text as content (no docx injection)
-        if p['id'] == 'zhihu' and docxText:
-            zContent = docxText
-            zDocxB64 = ''
-        else:
-            zContent = content
-            zDocxB64 = docxB64
-        result = publish(p["id"], title, zContent, zDocxB64)
+        result = publish(p["id"], title, content, docxB64)
         elapsed = time.time() - t0
         results[p["id"]] = result
 

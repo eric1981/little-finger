@@ -789,31 +789,38 @@ async function bjhImportDocx(base64Content: string) {
 
 async function zhihuImportDocx(base64Content: string) {
   try {
-    let fi = document.querySelector('input[type="file"][accept*=".docx"]') as HTMLInputElement | null;
-    if (!fi) return { success: false, error: '找不到docx input' };
+    // Load mammoth.js for docx→HTML conversion
+    if (!(window as any).__mammothLoaded) {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js';
+        s.onload = () => { (window as any).__mammothLoaded = true; resolve(); };
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
 
+    // Convert base64 to ArrayBuffer
     const binary = atob(base64Content);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const file = new File([blob], 'import.docx', { type: blob.type });
-    const dt = new DataTransfer(); dt.items.add(file);
 
-    // Intercept click: prevent native dialog, inject our file
-    const handler = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      fi!.files = dt.files;
-      fi!.dispatchEvent(new Event('change', { bubbles: true }));
-      fi!.dispatchEvent(new InputEvent('input', { bubbles: true }));
-    };
-    fi.addEventListener('click', handler, { once: true });
-    
-    // Trigger click — handler intercepts before native dialog opens
-    fi.click();
-    await wait(randomBetween(5000, 8000));
+    // Convert docx to HTML via mammoth
+    const result: any = await (window as any).mammoth.convertToHtml({arrayBuffer: bytes.buffer});
+    const html = result.value as string;
+    console.log('[LF:CS] mammoth converted:', html.length, 'chars, warnings:', result.messages?.length || 0);
 
-    return { success: true, message: 'docx文件已导入' };
+    // Find editor and insert HTML
+    const el = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
+    if (!el) return { success: false, error: '找不到编辑器' };
+    el.focus();
+    document.execCommand('selectAll', false);
+    document.execCommand('insertHTML', false, html);
+    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    await wait(2000);
+
+    return { success: true, message: 'docx文件已导入（mammoth HTML）' };
   } catch (err) {
     return { success: false, error: String(err) };
   }
