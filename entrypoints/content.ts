@@ -772,19 +772,9 @@ async function bjhImportDocx(base64Content: string) {
 
 async function zhihuImportDocx(base64Content: string) {
   try {
-    const importBtn = document.querySelector('button[aria-label="导入"]') as HTMLElement | null;
-    if (!importBtn) return { success: false, error: '找不到导入按钮' };
-    importBtn.click();
-    await wait(randomBetween(500, 1000));
-
-    const docBtn = document.querySelector('button[aria-label="导入文档"]') as HTMLElement | null;
-    if (!docBtn) return { success: false, error: '找不到导入文档按钮' };
-    docBtn.click();
-    await wait(randomBetween(500, 1000));
-
+    // Find the docx input directly (distinct from image/video inputs by accept value)
     let fi = document.querySelector('input[type="file"][accept*=".docx"]') as HTMLInputElement | null;
-    if (!fi) fi = document.querySelector('input[type="file"][accept*="doc"]') as HTMLInputElement | null;
-    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc,.md'; document.body.appendChild(fi); }
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc'; document.body.appendChild(fi); }
 
     const binary = atob(base64Content);
     const bytes = new Uint8Array(binary.length);
@@ -796,18 +786,6 @@ async function zhihuImportDocx(base64Content: string) {
     fi.dispatchEvent(new Event('change', { bubbles: true }));
     fi.dispatchEvent(new Event('input', { bubbles: true }));
     await wait(randomBetween(5000, 8000));
-
-    // Step 4: click the uploaded file to select it
-    const fileSelector = document.querySelector('div[class*="css-175oi2r"][class*="r-1loqt21"][class*="r-1otgn73"]') as HTMLElement | null;
-    if (fileSelector) { fileSelector.click(); await wait(500); }
-
-    // Step 5: click "添加文件" via XPath
-    const addFileBtn = document.evaluate(
-      "//div[contains(text(), '添加文件')]",
-      document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-    ).singleNodeValue as HTMLElement | null;
-    if (addFileBtn) { addFileBtn.click(); await wait(3000); }
-    
     return { success: true, message: 'docx文件已导入' };
   } catch (err) {
     return { success: false, error: String(err) };
