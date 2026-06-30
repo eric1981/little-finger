@@ -171,9 +171,6 @@ def main():
         print("[DRY RUN] 跳过发布")
         return
 
-    # 清理僵尸进程
-    kill_zombies()
-
     # 发布
     results = {}
     for p in targets:
