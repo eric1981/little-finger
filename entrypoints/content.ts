@@ -854,42 +854,39 @@ async function getArticleUrl(query: string = '') {
                    document.querySelector('a[data-tooltip*="查看"]');
       url = link ? (link as HTMLAnchorElement).href : '';
     } else if (host.includes('toutiao.com')) {
-      // 头条: search by title then grab first result
+      // 头条: no search — find link near title text in article list
       if (query) {
-        const si = document.querySelector('input[placeholder*="搜"]') as HTMLInputElement
-               || document.querySelector('input[type="text"]') as HTMLInputElement;
-        if (si) {
-          const ns = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-          ns.call(si, query);
-          si.dispatchEvent(new Event('input', { bubbles: true }));
-          si.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-          await wait(3000);
+        const matches = Array.from(document.querySelectorAll('a, span, div'))
+          .filter(el => el.textContent?.trim() === query);
+        if (matches.length > 0) {
+          const target = matches[0];
+          const link = target.closest('a') || target.querySelector('a') as HTMLAnchorElement | null;
+          url = link ? link.href : '';
         }
       }
-      url = (document.querySelector('a[href*="/group/"]')
-          || document.querySelector('table a[href]')
-          || document.querySelector('a[href*="/article"]')
-          || document.querySelector('tr a[href]')) as HTMLAnchorElement | null;
-      url = url ? url.href : '';
+      if (!url) {
+        const link = document.querySelector('a[href*="/group/"]')
+            || document.querySelector('table a[href]')
+            || document.querySelector('tr a[href]');
+        url = link ? (link as HTMLAnchorElement).href : '';
+      }
     } else if (host.includes('baijiahao.baidu.com')) {
-      // 百家号: type title into search, grab first result
+      // 百家号: find link near title text in list
       if (query) {
-        const si = document.querySelector('input[placeholder="输入标题关键字"]') as HTMLInputElement
-               || document.querySelector('input[placeholder*="标题"]') as HTMLInputElement
-               || document.querySelector('input.cheetah-input') as HTMLInputElement;
-        if (si) {
-          const ns = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-          ns.call(si, query);
-          si.dispatchEvent(new Event('input', { bubbles: true }));
-          si.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-          await wait(3000);
+        const matches = Array.from(document.querySelectorAll('a, span, div, td'))
+          .filter(el => el.textContent?.trim() === query);
+        if (matches.length > 0) {
+          const target = matches[0];
+          const link = target.closest('a') || target.querySelector('a') as HTMLAnchorElement | null;
+          url = link ? link.href : '';
         }
       }
-      const link = document.querySelector('a[href*="/rc/"]')
-                || document.querySelector('a[title][href*="/s/"]')
-                || document.querySelector('table a[href]')
-                || document.querySelector('tr a[href]');
-      url = link ? (link as HTMLAnchorElement).href : '';
+      if (!url) {
+        const link = document.querySelector('a[href*="/rc/"]')
+                  || document.querySelector('table a[href]')
+                  || document.querySelector('tr a[href]');
+        url = link ? (link as HTMLAnchorElement).href : '';
+      }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
