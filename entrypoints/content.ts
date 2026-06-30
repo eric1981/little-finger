@@ -565,16 +565,18 @@ async function uploadCoverImage(query: string) {
       return { success: false, error: '封面弹窗未打开（DOM无变化）' };
     }
 
-    // 3b. Baijiahao: click "本地上传" in the dialog
+    // 3b. Baijiahao: click "本地上传" in the dialog (XPath + text fallback)
     if (host.includes('baijiahao.baidu.com')) {
-      const localUpload = document.evaluate(
-        '//*[@id="rc-tabs-0-panel-local_main"]/div/div[1]/div[1]/div/div/span/div/span',
-        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-      ).singleNodeValue as HTMLElement;
-      if (localUpload) {
-        localUpload.click();
-        await wait(1000);
-      }
+      let localUpload: HTMLElement | null = null;
+      try {
+        localUpload = document.evaluate(
+          '//*[@id="rc-tabs-0-panel-local_main"]/div/div[1]/div[1]/div/div/span/div',
+          document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+        ).singleNodeValue as HTMLElement;
+      } catch {}
+      if (!localUpload) localUpload = findByVisibleText('本地上传') as HTMLElement | null;
+      if (!localUpload) localUpload = findByVisibleText('点击从本地上传') as HTMLElement | null;
+      if (localUpload) { localUpload.click(); await wait(1000); }
     }
 
     // Upload file
