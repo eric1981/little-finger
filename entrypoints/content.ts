@@ -682,7 +682,7 @@ async function bjhImportDocx(base64Content: string) {
 
     // Step 3: click the file selection button
     const fileBtn = document.evaluate(
-      '/html/body/div[7]/div/div[2]/div/div[1]/div/div[3]/span/div/span/button',
+      '/html/body/div[6]/div/div[2]/div/div[1]/div/div[3]/span/div/span/button/span',
       document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
     ).singleNodeValue as HTMLElement;
     if (!fileBtn) return { success: false, error: '文件选择按钮未找到' };
