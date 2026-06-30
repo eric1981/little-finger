@@ -29,7 +29,7 @@ PLATFORMS: list[dict] = [
 
 TIMEOUT = 130  # seconds per platform
 
-def publish(platform_id: str, title: str, content: str) -> dict:
+def publish(platform_id: str, title: str, content: str, docxB64: str = "") -> dict:
     """向单个平台发布，返回 {'success': bool, 'message': str}"""
     cmd = json.dumps({
         "action": "publish_article",
@@ -108,7 +108,7 @@ def main():
     for p in targets:
         print(f"⏳ {p['name']} 发布中...", end=" ", flush=True)
         t0 = time.time()
-        result = publish(p["id"], title, content)
+        result = publish(p["id"], title, content, docxB64)
         elapsed = time.time() - t0
         results[p["id"]] = result
 
