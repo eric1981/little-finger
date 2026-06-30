@@ -64,7 +64,7 @@ export default defineContentScript({
 
       // ── Get article public URL from management page ──
       if (m.type === 'GET_ARTICLE_URL') {
-        return getArticleUrl().then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+        return getArticleUrl(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
       
       // ── Low-level: raw selector action ──
@@ -841,7 +841,7 @@ async function zhihuImportDocx(base64Content: string) {
 
 // ─── Get article public URL from management page ───
 
-async function getArticleUrl() {
+async function getArticleUrl(query: string = '') {
   try {
     const host = location.hostname;
     let url = '';
@@ -854,9 +854,18 @@ async function getArticleUrl() {
                    document.querySelector('a[data-tooltip*="查看"]');
       url = link ? (link as HTMLAnchorElement).href : '';
     } else if (host.includes('toutiao.com')) {
-      // 头条: find first article link
+      // 头条: search then grab first result link
+      if (query) {
+        const si = document.querySelector('input[placeholder*="搜索"]') as HTMLInputElement;
+        if (si) {
+          const ns = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+          ns.call(si, query);
+          si.dispatchEvent(new Event('input', { bubbles: true }));
+          await wait(2000);
+        }
+      }
       const link = document.querySelector('a[href*="/group/"]') ||
-                   document.querySelector('a[href*="/a"]');
+                   document.querySelector('table a[href]');
       url = link ? (link as HTMLAnchorElement).href : '';
     } else if (host.includes('baijiahao.baidu.com')) {
       // 百家号: find first article in the list

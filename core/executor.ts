@@ -150,7 +150,7 @@ export function executeOneStep(
         // Navigate to management page, then extract URL
         chrome.tabs.update(tabId, { url: step.target, active: true }, () => {
           setTimeout(() => {
-            chrome.tabs.sendMessage(tabId, { type: 'GET_ARTICLE_URL', id: 'url' }, (r) => {
+            chrome.tabs.sendMessage(tabId, { type: 'GET_ARTICLE_URL', id: 'url', value: step.value }, (r) => {
               resolve(r?.success ? { success: true, message: r.message, data: { url: r.url } } 
                       : { success: false, message: r?.error || '获取URL失败' });
             });

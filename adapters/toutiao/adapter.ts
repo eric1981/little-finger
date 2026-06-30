@@ -66,6 +66,6 @@ export class ToutiaoAdapter {
     yield { type: 'wait', target: '3000', reason: '等待预览弹窗' };
     yield { type: 'find_and_click', target: config.confirmText, reason: '确认发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
-    yield { type: 'get_article_url', target: 'https://mp.toutiao.com/profile_v4/graphic/articles', reason: '获取文章URL' };
+    yield { type: 'get_article_url', target: 'https://mp.toutiao.com/profile_v4/graphic/articles', value: article.title, reason: '获取文章URL' };
   }
 }

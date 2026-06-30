@@ -65,6 +65,6 @@ export class ZhihuAdapter {
     yield { type: 'wait', target: '3000', reason: '等待发布处理' };
     yield { type: 'find_and_click_optional', target: config.confirmText, reason: '确认发布（如不需要则跳过）' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
-    yield { type: 'get_article_url', target: 'https://www.zhihu.com/creator/manage/creation/all', reason: '获取文章URL' };
+    yield { type: 'get_article_url', target: 'https://www.zhihu.com/creator/manage/creation/all', value: article.title, reason: '获取文章URL' };
   }
 }

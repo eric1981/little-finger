@@ -109,7 +109,7 @@ def main():
     if args.get_url:
         if not args.platform:
             args.platform = "zhihu,toutiao,baijiahao"
-        title = "get-url"  # placeholder
+        title = args.title or ""
         content = ""
     elif args.docx:
         if not args.title:

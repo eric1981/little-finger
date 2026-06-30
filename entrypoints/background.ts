@@ -140,7 +140,7 @@ async function executeCommand(cmd: {
 
       const urlResult = await executeOneStep(
         tab.id!, 
-        { type: 'get_article_url', target: mgmtUrl, reason: '' }, 
+        { type: 'get_article_url', target: mgmtUrl, value: cmd.title || '', reason: '' }, 
         (msg, type) => console.log(`[LF:BG] ${type}: ${msg}`)
       );
       return urlResult.success ? { success: true, message: urlResult.message, data: urlResult.data }

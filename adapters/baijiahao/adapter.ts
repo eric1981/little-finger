@@ -76,6 +76,6 @@ export class BaijiahaoAdapter {
 
     yield { type: 'find_and_click', target: config.publishText, reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
-    yield { type: 'get_article_url', target: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=', reason: '获取文章URL' };
+    yield { type: 'get_article_url', target: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=', value: article.title, reason: '获取文章URL' };
   }
 }
