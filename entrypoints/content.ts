@@ -570,13 +570,14 @@ async function uploadCoverImage(query: string) {
       let localUpload: HTMLElement | null = null;
       try {
         localUpload = document.evaluate(
-          '//*[@id="rc-tabs-0-panel-local_main"]/div/div[1]/div[1]/div/div/span/div',
+          '/html/body/div[7]/div/div[2]/div/div[1]/div/div/div/div[2]/div/div/div/div[1]/div[1]/div/div/span/div',
           document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
         ).singleNodeValue as HTMLElement;
       } catch {}
       if (!localUpload) localUpload = findByVisibleText('本地上传') as HTMLElement | null;
       if (!localUpload) localUpload = findByVisibleText('点击从本地上传') as HTMLElement | null;
-      if (localUpload) { localUpload.click(); await wait(1000); }
+      if (!localUpload) return { success: false, error: '找不到"本地上传"按钮' };
+      localUpload.click();
     }
 
     // Upload file
