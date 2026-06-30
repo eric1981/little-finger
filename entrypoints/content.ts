@@ -61,6 +61,11 @@ export default defineContentScript({
       if (m.type === 'IMPORT_DOCX_ZHIHU') {
         return zhihuImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
+
+      // ── Get article public URL from management page ──
+      if (m.type === 'GET_ARTICLE_URL') {
+        return getArticleUrl().then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
       
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
@@ -829,6 +834,40 @@ async function zhihuImportDocx(base64Content: string) {
     await wait(2000);
 
     return { success: true, message: 'docx文件已导入（mammoth HTML）' };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Get article public URL from management page ───
+
+async function getArticleUrl() {
+  try {
+    const host = location.hostname;
+    let url = '';
+    await wait(2000); // wait for list to load
+
+    if (host.includes('zhihu.com')) {
+      // 知乎: find first answer/article link
+      const link = document.querySelector('a[href*="/answer/"]') || 
+                   document.querySelector('a[href*="/p/"]') ||
+                   document.querySelector('a[data-tooltip*="查看"]');
+      url = link ? (link as HTMLAnchorElement).href : '';
+    } else if (host.includes('toutiao.com')) {
+      // 头条: find first article link
+      const link = document.querySelector('a[href*="/group/"]') ||
+                   document.querySelector('a[href*="/a"]');
+      url = link ? (link as HTMLAnchorElement).href : '';
+    } else if (host.includes('baijiahao.baidu.com')) {
+      // 百家号: find first article in the list
+      const link = document.querySelector('a[href*="/rc/"]') ||
+                   document.querySelector('a[title][href*="/s/"]') ||
+                   document.querySelector('table a[href]');
+      url = link ? (link as HTMLAnchorElement).href : '';
+    }
+
+    if (!url) return { success: false, error: '未找到文章链接' };
+    return { success: true, message: url, url };
   } catch (err) {
     return { success: false, error: String(err) };
   }

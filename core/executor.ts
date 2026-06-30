@@ -146,6 +146,18 @@ function executeOneStep(
         });
         break;
 
+      case 'get_article_url':
+        // Navigate to management page, then extract URL
+        chrome.tabs.update(tabId, { url: step.target, active: true }, () => {
+          setTimeout(() => {
+            chrome.tabs.sendMessage(tabId, { type: 'GET_ARTICLE_URL', id: 'url' }, (r) => {
+              resolve(r?.success ? { success: true, message: r.message, data: { url: r.url } } 
+                      : { success: false, message: r?.error || '获取URL失败' });
+            });
+          }, 4000); // wait for list to load
+        });
+        break;
+
       case 'wait_for_login':
         waitForLogin(tabId, step, onProgress).then(resolve);
         break;

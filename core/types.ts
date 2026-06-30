@@ -98,7 +98,8 @@ export interface Step {
        | 'type_iframe'
        | 'import_docx'
        | 'import_docx_bjh'
-       | 'import_docx_zhihu';  // Zhihu 2-step import
+       | 'import_docx_zhihu'
+       | 'get_article_url';  // navigate to mgmt page + extract public URL
   target: string;        // selector, URL, or text to find
   value?: string;        // text to type
   reason: string;
