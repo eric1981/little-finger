@@ -562,8 +562,19 @@ async function uploadCoverImage(query: string) {
     const afterEl = document.body.querySelectorAll('*').length;
     
     if (afterEl <= beforeEl) {
-      // No new elements = dialog didn't open
       return { success: false, error: '封面弹窗未打开（DOM无变化）' };
+    }
+
+    // 3b. Baijiahao: click "本地上传" in the dialog
+    if (host.includes('baijiahao.baidu.com')) {
+      const localUpload = document.evaluate(
+        '//*[@id="rc-tabs-0-panel-local_main"]/div/div[1]/div[1]/div/div/span/div/span/div/div[2]',
+        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+      ).singleNodeValue as HTMLElement;
+      if (localUpload) {
+        localUpload.click();
+        await wait(1000);
+      }
     }
 
     // Upload file
