@@ -687,8 +687,16 @@ async function typeIntoIframe(selector: string, value: string) {
 
 async function importDocx(base64Content: string, btnSelector: string) {
   try {
-    // 1. Click import button (selector from adapter config, fallback to class)
-    let importBtn = document.querySelector(btnSelector) as HTMLElement | null;
+    // 1. Click import button (XPath or CSS from adapter config)
+    let importBtn: HTMLElement | null = null;
+    if (btnSelector.startsWith('/')) {
+      try {
+        importBtn = document.evaluate(btnSelector, document, null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue as HTMLElement;
+      } catch {}
+    } else {
+      importBtn = document.querySelector(btnSelector) as HTMLElement | null;
+    }
     if (!importBtn) importBtn = document.querySelector('.syl-toolbar-button') as HTMLElement | null;
     if (!importBtn) return { success: false, error: '找不到导入按钮' };
     importBtn.click();
