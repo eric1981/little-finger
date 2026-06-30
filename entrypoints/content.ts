@@ -50,6 +50,11 @@ export default defineContentScript({
       if (m.type === 'IMPORT_DOCX') {
         return importDocx(m.value || '', m.selector || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
+
+      // ── Import .docx file (Baijiahao 3-step: hover → click import → click file btn) ──
+      if (m.type === 'IMPORT_DOCX_BJH') {
+        return bjhImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
       
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
@@ -644,6 +649,61 @@ async function importDocx(base64Content: string, btnSelector: string) {
     fi.dispatchEvent(new Event('input', { bubbles: true }));
 
     // 5. Wait for import + content parsing
+    await wait(randomBetween(5000, 8000));
+
+    return { success: true, message: 'docx文件已导入' };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Import .docx file (Baijiahao — 3 step flow) ───
+
+async function bjhImportDocx(base64Content: string) {
+  try {
+    // Step 1: hover over the toolbar state element
+    const hoverEl = document.evaluate(
+      '//*[@id="edui40_state"]/div[2]',
+      document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+    ).singleNodeValue as HTMLElement;
+    if (!hoverEl) return { success: false, error: 'hover元素未找到' };
+    hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await wait(randomBetween(500, 1000));
+
+    // Step 2: click the import menu item
+    const importMenu = document.evaluate(
+      '/html/body/div[5]/div/div/div/div/div/div[2]/div[2]/div[8]/div[2]',
+      document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+    ).singleNodeValue as HTMLElement;
+    if (!importMenu) return { success: false, error: '导入菜单未找到' };
+    importMenu.click();
+    await wait(randomBetween(1000, 2000));
+
+    // Step 3: click the file selection button
+    const fileBtn = document.evaluate(
+      '/html/body/div[7]/div/div[2]/div/div[1]/div/div[3]/span/div/span/button',
+      document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+    ).singleNodeValue as HTMLElement;
+    if (!fileBtn) return { success: false, error: '文件选择按钮未找到' };
+    fileBtn.click();
+    await wait(randomBetween(500, 1000));
+
+    // Step 4: find file input & inject
+    let fi = document.querySelector('input[type="file"][accept*="doc"]') as HTMLInputElement | null;
+    if (!fi) fi = document.querySelector('input[type="file"]:not([accept*="image"]):not([accept*="video"])') as HTMLInputElement | null;
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc'; document.body.appendChild(fi); }
+
+    const binary = atob(base64Content);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const file = new File([blob], 'import.docx', { type: blob.type });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change', { bubbles: true }));
+    fi.dispatchEvent(new Event('input', { bubbles: true }));
     await wait(randomBetween(5000, 8000));
 
     return { success: true, message: 'docx文件已导入' };

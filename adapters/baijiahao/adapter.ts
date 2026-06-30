@@ -59,13 +59,13 @@ export class BaijiahaoAdapter {
       reason: '填入标题',
     };
 
-    // Body: iframe UEditor
-    yield {
-      type: 'type_iframe',
-      target: config.bodyIframe,
-      value: article.content,
-      reason: '填入正文',
-    };
+    // Body: iframe UEditor or docx import
+    if (article.docxB64) {
+      yield { type: 'import_docx_bjh', target: '', value: article.docxB64, reason: '导入docx文件' };
+      yield { type: 'wait', target: '8000', reason: '等待docx解析' };
+    } else {
+      yield { type: 'type_iframe', target: config.bodyIframe, value: article.content, reason: '填入正文' };
+    }
 
     yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
 

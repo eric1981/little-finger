@@ -96,7 +96,8 @@ export interface Step {
        | 'wait_for_login'
        | 'upload_cover'
        | 'type_iframe'
-       | 'import_docx';     // import .docx file into editor
+       | 'import_docx'
+       | 'import_docx_bjh';  // Baijiahao 3-step import
   target: string;        // selector, URL, or text to find
   value?: string;        // text to type
   reason: string;
