@@ -2,7 +2,7 @@ import { AIEngine } from '../core/ai';
 import { ZhihuAdapter, updateZhihuConfig } from '../adapters/zhihu/adapter';
 import { ToutiaoAdapter, updateToutiaoConfig } from '../adapters/toutiao/adapter';
 import { BaijiahaoAdapter, updateBaijiahaoConfig } from '../adapters/baijiahao/adapter';
-import { executeSteps } from '../core/executor';
+import { executeSteps, executeOneStep } from '../core/executor';
 
 let nativePort: chrome.runtime.Port | null = null;
 
@@ -124,6 +124,27 @@ async function executeCommand(cmd: {
       });
 
       return { success: result.success, message: result.message, data: { title } };
+    }
+
+    if (cmd.action === 'get_article_url') {
+      const platformUrls: Record<string, string> = {
+        zhihu: 'https://www.zhihu.com/creator/manage/creation/all',
+        toutiao: 'https://mp.toutiao.com/profile_v4/graphic/articles',
+        baijiahao: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=',
+      };
+      const mgmtUrl = platformUrls[cmd.platform];
+      if (!mgmtUrl) return { success: false, message: `未知平台: ${cmd.platform}`, data: null };
+
+      const tab = await chrome.tabs.create({ url: mgmtUrl, active: true });
+      await sleep(5000);
+
+      const urlResult = await executeOneStep(
+        tab.id!, 
+        { type: 'get_article_url', target: mgmtUrl, reason: '' }, 
+        (msg, type) => console.log(`[LF:BG] ${type}: ${msg}`)
+      );
+      return urlResult.success ? { success: true, message: urlResult.message, data: urlResult.data }
+                               : { success: false, message: urlResult.message, data: null };
     }
 
     return { success: false, message: `不支持: ${cmd.action} on ${cmd.platform}`, data: null };

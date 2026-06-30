@@ -5,7 +5,7 @@
 
 import type { Step } from './types';
 
-export type StepResult = { success: boolean; message: string };
+export type StepResult = { success: boolean; message: string; data?: any };
 
 /**
  * Execute a list of adapter steps sequentially on the given tab.
@@ -32,7 +32,7 @@ export async function executeSteps(
   return { success: true, message: '完成' };
 }
 
-function executeOneStep(
+export function executeOneStep(
   tabId: number,
   step: Step,
   onProgress: (msg: string, type: 'info' | 'success' | 'error' | 'wait') => void
