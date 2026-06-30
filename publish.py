@@ -39,10 +39,17 @@ def publish(platform_id: str, title: str, content: str, docxB64: str = "") -> di
         "params": {"docxB64": docxB64} if docxB64 else {},
     }, ensure_ascii=False)
 
+    # Write to temp file (avoids "Argument list too long" for large docx)
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+        f.write(cmd)
+        tmp = f.name
+
     result = subprocess.run(
-        [sys.executable, str(CLI), cmd],
+        [sys.executable, str(CLI), '--file', tmp],
         capture_output=True, text=True, timeout=TIMEOUT,
     )
+    Path(tmp).unlink(missing_ok=True)
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError:

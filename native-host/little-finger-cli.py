@@ -18,14 +18,18 @@ RESULT_FILE = CMD_DIR / 'result.json'
 TIMEOUT = 120  # seconds
 
 def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"success": False, "error": "Usage: little-finger-cli.py '<json_command>'"}))
-        sys.exit(1)
-    
-    try:
-        cmd = json.loads(sys.argv[1])
-    except json.JSONDecodeError as e:
-        print(json.dumps({"success": False, "error": f"Invalid JSON: {e}"}))
+    # Support --file <path> for large payloads
+    if len(sys.argv) >= 3 and sys.argv[1] == '--file':
+        with open(sys.argv[2]) as f:
+            cmd = json.load(f)
+    elif len(sys.argv) >= 2:
+        try:
+            cmd = json.loads(sys.argv[1])
+        except json.JSONDecodeError as e:
+            print(json.dumps({"success": False, "error": f"Invalid JSON: {e}"}))
+            sys.exit(1)
+    else:
+        print(json.dumps({"success": False, "error": "Usage: little-finger-cli.py '<json>' or --file <path>"}))
         sys.exit(1)
     
     CMD_DIR.mkdir(parents=True, exist_ok=True)
