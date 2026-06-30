@@ -36,7 +36,7 @@ export default defineContentScript({
       
       // ── Upload cover image: search Pexels → fetch → file input → confirm ──
       if (m.type === 'UPLOAD_COVER') {
-        return uploadCoverImage(m.text || '')
+        return uploadCoverImage(m.text || '', m.value || '')
           .then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }))
           .catch(err => ({ type: 'ACTION_RESULT', id: m.id, success: false, error: String(err) }));
       }
@@ -502,7 +502,7 @@ async function executeAction(action: { selector: string; action: string; value?:
 
 // ─── Cover Image Upload (Pexels via Background SW to avoid CORS) ───
 
-async function uploadCoverImage(query: string) {
+async function uploadCoverImage(query: string, localUploadXPath: string = '') {
   try {
     // 1. Search Pexels via Background SW (no CORS restrictions)
     const searchResp = await chrome.runtime.sendMessage({
@@ -565,19 +565,15 @@ async function uploadCoverImage(query: string) {
       return { success: false, error: '封面弹窗未打开（DOM无变化）' };
     }
 
-    // 3b. Baijiahao: click "本地上传" in the dialog (XPath + text fallback)
-    if (host.includes('baijiahao.baidu.com')) {
+    // 3b. Click "本地上传" (XPath from adapter config)
+    if (localUploadXPath) {
       let localUpload: HTMLElement | null = null;
       try {
-        localUpload = document.evaluate(
-          '/html/body/div[7]/div/div[2]/div/div[1]/div/div/div/div[2]/div/div/div/div[1]/div[1]/div/div/span/div',
-          document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-        ).singleNodeValue as HTMLElement;
+        localUpload = document.evaluate(localUploadXPath, document, null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue as HTMLElement;
       } catch {}
       if (!localUpload) localUpload = findByVisibleText('本地上传') as HTMLElement | null;
-      if (!localUpload) localUpload = findByVisibleText('点击从本地上传') as HTMLElement | null;
-      if (!localUpload) return { success: false, error: '找不到"本地上传"按钮' };
-      localUpload.click();
+      if (localUpload) { localUpload.click(); await wait(1000); }
     }
 
     // Upload file

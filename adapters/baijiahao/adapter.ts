@@ -14,6 +14,7 @@ let config = {
   bodyIframe: '#ueditor_0',
   publishText: '发布',
   coverXPath: '//*[@id="bjhNewsCover"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]',
+  localUploadXPath: '/html/body/div[7]/div/div[2]/div/div[1]/div/div/div/div[2]/div/div/div/div[1]/div[1]/div/div/span/div',
   loggedOutSignals: ['登录', '短信登录', '账号登录'],
 };
 
@@ -70,7 +71,7 @@ export class BaijiahaoAdapter {
     yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
 
     // Cover image (百家号也需要封面)
-    yield { type: 'upload_cover', target: article.title, reason: '搜索并上传封面图' };
+    yield { type: 'upload_cover', target: article.title, value: config.localUploadXPath, reason: '搜索并上传封面图' };
     yield { type: 'wait', target: '2000', reason: '等待封面上传完成' };
 
     yield { type: 'find_and_click', target: config.publishText, reason: '点击发布' };

@@ -117,7 +117,7 @@ function executeOneStep(
         break;
 
       case 'upload_cover':
-        chrome.tabs.sendMessage(tabId, { type: 'UPLOAD_COVER', id: 'cover', text: step.target }, (r) => {
+        chrome.tabs.sendMessage(tabId, { type: 'UPLOAD_COVER', id: 'cover', text: step.target, value: step.value }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || '封面上传失败' });
         });
         break;
