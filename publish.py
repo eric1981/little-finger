@@ -92,6 +92,7 @@ def main():
         z = zipfile.ZipFile(str(docxPath))
         xml = z.read('word/document.xml')
         root = ET.fromstring(xml)
+        NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
         def para_to_html(p):
             parts = []
