@@ -608,15 +608,24 @@ async function typeIntoIframe(selector: string, value: string) {
 
 async function importDocx(base64Content: string, btnSelector: string) {
   try {
-    // 1. Click import button
+    // 1. Click import button on toolbar
     const importBtn = document.querySelector(btnSelector || '.syl-toolbar-button') as HTMLElement | null;
     if (!importBtn) return { success: false, error: '找不到导入按钮' };
     importBtn.click();
     await wait(randomBetween(1000, 2000));
 
-    // 2. Find the file input that appeared
+    // 2. In the dialog, find the upload trigger (button or link)
+    const uploadTrigger = findByVisibleText('上传文档') || findByVisibleText('选择文件')
+      || findByVisibleText('导入') || document.querySelector('.syl-toolbar-button');
+    if (uploadTrigger) {
+      (uploadTrigger as HTMLElement).click();
+      await wait(randomBetween(500, 1000));
+    }
+
+    // 3. Find the file input (accept: pdf,doc,docx)
     let fi = document.querySelector('input[type="file"][accept*="doc"]') as HTMLInputElement | null;
-    if (!fi) fi = document.querySelector('input[type="file"]:not([accept*="image"])') as HTMLInputElement | null;
+    if (!fi) fi = document.querySelector('input[type="file"][accept*=".doc"]') as HTMLInputElement | null;
+    if (!fi) fi = document.querySelector('input[type="file"]:not([accept*="image"]):not([accept*="video"])') as HTMLInputElement | null;
     if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc'; document.body.appendChild(fi); }
 
     // 3. Decode base64 to binary and create File
