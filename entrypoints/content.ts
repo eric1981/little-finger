@@ -772,9 +772,8 @@ async function bjhImportDocx(base64Content: string) {
 
 async function zhihuImportDocx(base64Content: string) {
   try {
-    // Find the docx input directly (distinct from image/video inputs by accept value)
     let fi = document.querySelector('input[type="file"][accept*=".docx"]') as HTMLInputElement | null;
-    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx,.doc'; document.body.appendChild(fi); }
+    if (!fi) return { success: false, error: '找不到docx input' };
 
     const binary = atob(base64Content);
     const bytes = new Uint8Array(binary.length);
@@ -782,15 +781,21 @@ async function zhihuImportDocx(base64Content: string) {
     const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
     const file = new File([blob], 'import.docx', { type: blob.type });
     const dt = new DataTransfer(); dt.items.add(file);
+
+    // Intercept click: prevent native dialog, inject our file
+    const handler = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fi!.files = dt.files;
+      fi!.dispatchEvent(new Event('change', { bubbles: true }));
+      fi!.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    };
+    fi.addEventListener('click', handler, { once: true });
     
-    // Simulate real file selection sequence (focus → set → change → blur)
-    fi.focus();
-    fi.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
-    fi.files = dt.files;
-    fi.dispatchEvent(new Event('change', { bubbles: true }));
-    fi.dispatchEvent(new InputEvent('input', { bubbles: true }));
-    fi.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    // Trigger click — handler intercepts before native dialog opens
+    fi.click();
     await wait(randomBetween(5000, 8000));
+
     return { success: true, message: 'docx文件已导入' };
   } catch (err) {
     return { success: false, error: String(err) };
