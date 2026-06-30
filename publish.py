@@ -80,8 +80,13 @@ def main():
     docxB64 = ""
     if args.docx:
         import base64
-        docxB64 = base64.b64encode(Path(args.docx).read_bytes()).decode()
-        print(f"📦 docx: {Path(args.docx).name} ({len(docxB64)} chars base64)")
+        docxPath = Path(args.docx)
+        # Auto-translate Windows paths to WSL (/mnt/c/...)
+        if not docxPath.exists() and '\\' in args.docx:
+            wslPath = '/mnt/' + args.docx.replace(':\\', '/').replace('\\', '/').lower()
+            docxPath = Path(wslPath)
+        docxB64 = base64.b64encode(docxPath.read_bytes()).decode()
+        print(f"📦 docx: {docxPath.name} ({len(docxB64)} chars base64)")
 
     # 确定目标平台
     if args.platform:
