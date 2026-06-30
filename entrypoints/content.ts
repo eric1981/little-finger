@@ -801,9 +801,9 @@ async function zhihuImportDocx(base64Content: string) {
     const fileSelector = document.querySelector('div[class*="css-175oi2r"][class*="r-1loqt21"][class*="r-1otgn73"]') as HTMLElement | null;
     if (fileSelector) { fileSelector.click(); await wait(500); }
 
-    // Step 5: click "添加文件" to confirm
+    // Step 5: click "添加文件" parent container (tabindex element)
     const addFileBtn = document.querySelector('div.css-146c3p1') as HTMLElement | null;
-    if (addFileBtn) { addFileBtn.click(); await wait(3000); }
+    if (addFileBtn) { (addFileBtn.parentElement || addFileBtn).click(); await wait(3000); }
     
     return { success: true, message: 'docx文件已导入' };
   } catch (err) {
