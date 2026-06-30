@@ -500,6 +500,52 @@ async function executeAction(action: { selector: string; action: string; value?:
   }
 }
 
+// ─── React-aware click (bypasses React's synthetic event check) ───
+
+function reactClick(el: Element | null): boolean {
+  if (!el) return false;
+
+  // Approach 1: Find React fiber and invoke onClick directly
+  const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+  if (fiberKey) {
+    let fiber: any = (el as any)[fiberKey];
+    // Walk up fiber tree to find a node with pendingProps.onClick
+    for (let i = 0; fiber && i < 10; i++) {
+      const props = fiber.memoizedProps || fiber.pendingProps;
+      if (props?.onClick) {
+        // Fire mousedown then click to simulate full interaction
+        if (props.onMouseDown) props.onMouseDown({ nativeEvent: {}, target: el, currentTarget: el, preventDefault: () => {}, stopPropagation: () => {} });
+        props.onClick({ nativeEvent: {}, target: el, currentTarget: el, preventDefault: () => {}, stopPropagation: () => {} });
+        return true;
+      }
+      fiber = fiber.return; // parent fiber
+    }
+  }
+
+  // Approach 2: Try __reactProps (React 18+)
+  const reactKey = Object.keys(el).find(k => k.startsWith('__reactProps$'));
+  if (reactKey) {
+    const props = (el as any)[reactKey];
+    if (props?.onClick) {
+      props.onClick({ target: el, currentTarget: el, preventDefault: () => {}, stopPropagation: () => {} });
+      return true;
+    }
+  }
+
+  // Approach 3: native event fallback
+  const rect = el.getBoundingClientRect();
+  ['pointerdown', 'pointerup', 'click'].forEach(type => {
+    el.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      button: 0, pointerId: 1,
+    }));
+  });
+
+  return false; // tried native, may or may not work
+}
+
 // ─── Cover Image Upload (Pexels via Background SW to avoid CORS) ───
 
 async function uploadCoverImage(query: string, localUploadXPath: string = '') {
@@ -545,18 +591,22 @@ async function uploadCoverImage(query: string, localUploadXPath: string = '') {
     
     if (!clickable) return { success: false, error: '找不到封面按钮（平台: ' + host + '）' };
 
-    // Count DOM elements before click
+    // Use reactClick for all Baijiahao clicks, native for others
     const beforeEl = document.body.querySelectorAll('*').length;
     
-    const rect = clickable.getBoundingClientRect();
-    ['pointerdown', 'pointerup', 'click'].forEach(type => {
-      clickable!.dispatchEvent(new PointerEvent(type as any, {
-        bubbles: true, cancelable: true,
-        clientX: rect.left + rect.width / 2,
-        clientY: rect.top + rect.height / 2,
-        button: 0, pointerId: 1,
-      }));
-    });
+    if (host.includes('baijiahao.baidu.com')) {
+      reactClick(clickable);
+    } else {
+      const rect = clickable.getBoundingClientRect();
+      ['pointerdown', 'pointerup', 'click'].forEach(type => {
+        clickable!.dispatchEvent(new PointerEvent(type as any, {
+          bubbles: true, cancelable: true,
+          clientX: rect.left + rect.width / 2,
+          clientY: rect.top + rect.height / 2,
+          button: 0, pointerId: 1,
+        }));
+      });
+    }
     
     await wait(1500);
     const afterEl = document.body.querySelectorAll('*').length;
@@ -565,15 +615,15 @@ async function uploadCoverImage(query: string, localUploadXPath: string = '') {
       return { success: false, error: '封面弹窗未打开（DOM无变化）' };
     }
 
-    // 3b. Click "本地上传" (XPath from adapter config)
+    // 3b. Click "本地上传" via reactClick
     if (localUploadXPath) {
-      let localUpload: HTMLElement | null = null;
+      let localUpload: Element | null = null;
       try {
         localUpload = document.evaluate(localUploadXPath, document, null,
           XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue as HTMLElement;
       } catch {}
-      if (!localUpload) localUpload = findByVisibleText('本地上传') as HTMLElement | null;
-      if (localUpload) { localUpload.click(); await wait(1000); }
+      if (!localUpload) localUpload = findByVisibleText('本地上传');
+      if (localUpload) { reactClick(localUpload); await wait(1000); }
     }
 
     // Upload file
