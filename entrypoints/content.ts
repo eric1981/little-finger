@@ -772,9 +772,9 @@ async function bjhImportDocx(base64Content: string) {
 
 async function zhihuImportDocx(base64Content: string) {
   try {
-    const importSpan = document.querySelector('span.css-8atqhb') as HTMLElement | null;
-    if (!importSpan) return { success: false, error: '找不到导入按钮' };
-    importSpan.click();
+    const importBtn = document.querySelector('button[aria-label="导入"]') as HTMLElement | null;
+    if (!importBtn) return { success: false, error: '找不到导入按钮' };
+    importBtn.click();
     await wait(randomBetween(500, 1000));
 
     const docBtn = document.querySelector('button[aria-label="导入文档"]') as HTMLElement | null;
