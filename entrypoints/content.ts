@@ -854,24 +854,41 @@ async function getArticleUrl(query: string = '') {
                    document.querySelector('a[data-tooltip*="查看"]');
       url = link ? (link as HTMLAnchorElement).href : '';
     } else if (host.includes('toutiao.com')) {
-      // 头条: search then grab first result link
+      // 头条: search by title then grab first result
       if (query) {
-        const si = document.querySelector('input[placeholder*="搜索"]') as HTMLInputElement;
+        const si = document.querySelector('input[placeholder*="搜"]') as HTMLInputElement
+               || document.querySelector('input[type="text"]') as HTMLInputElement;
         if (si) {
           const ns = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
           ns.call(si, query);
           si.dispatchEvent(new Event('input', { bubbles: true }));
-          await wait(2000);
+          si.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          await wait(3000);
         }
       }
-      const link = document.querySelector('a[href*="/group/"]') ||
-                   document.querySelector('table a[href]');
-      url = link ? (link as HTMLAnchorElement).href : '';
+      url = (document.querySelector('a[href*="/group/"]')
+          || document.querySelector('table a[href]')
+          || document.querySelector('a[href*="/article"]')
+          || document.querySelector('tr a[href]')) as HTMLAnchorElement | null;
+      url = url ? url.href : '';
     } else if (host.includes('baijiahao.baidu.com')) {
-      // 百家号: find first article in the list
-      const link = document.querySelector('a[href*="/rc/"]') ||
-                   document.querySelector('a[title][href*="/s/"]') ||
-                   document.querySelector('table a[href]');
+      // 百家号: type title into search, grab first result
+      if (query) {
+        const si = document.querySelector('input[placeholder="输入标题关键字"]') as HTMLInputElement
+               || document.querySelector('input[placeholder*="标题"]') as HTMLInputElement
+               || document.querySelector('input.cheetah-input') as HTMLInputElement;
+        if (si) {
+          const ns = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+          ns.call(si, query);
+          si.dispatchEvent(new Event('input', { bubbles: true }));
+          si.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          await wait(3000);
+        }
+      }
+      const link = document.querySelector('a[href*="/rc/"]')
+                || document.querySelector('a[title][href*="/s/"]')
+                || document.querySelector('table a[href]')
+                || document.querySelector('tr a[href]');
       url = link ? (link as HTMLAnchorElement).href : '';
     }
 
