@@ -789,13 +789,13 @@ async function bjhImportDocx(base64Content: string) {
 
 async function zhihuImportDocx(base64Content: string) {
   try {
-    // Load mammoth.js for docx→HTML conversion
+    // Load mammoth.js from extension bundle (avoids CSP issues)
     if (!(window as any).__mammothLoaded) {
       await new Promise<void>((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js';
+        s.src = chrome.runtime.getURL('mammoth.js');
         s.onload = () => { (window as any).__mammothLoaded = true; resolve(); };
-        s.onerror = reject;
+        s.onerror = () => reject(new Error('mammoth.js 加载失败'));
         document.head.appendChild(s);
       });
     }
