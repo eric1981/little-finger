@@ -255,11 +255,21 @@ async function findAndType(labelOrPlaceholder: string, value: string) {
       document.execCommand('selectAll', false);
       await wait(humanDelay(80));
       
-      // HTML content (from docx conversion): use insertHTML once
+      // HTML content (from docx conversion): insert one paragraph at a time
       if (/^<[a-z]+[>\s]/.test(value)) {
-        document.execCommand('insertHTML', false, value);
-        el.dispatchEvent(new InputEvent('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
+        const paras = value.split(/(?=<p>)/i);
+        let first = true;
+        for (const para of paras) {
+          if (!para.trim()) continue;
+          if (first) {
+            document.execCommand('insertHTML', false, para);
+            first = false;
+          } else {
+            document.execCommand('insertHTML', false, para);
+          }
+          el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+          await wait(randomBetween(100, 300));
+        }
       } else {
       // Plain text: type in chunks to simulate human writing (anti-bot)
       const CHUNK_SIZE = 40; // characters per "burst"
