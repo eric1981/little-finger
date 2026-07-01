@@ -59,23 +59,23 @@ export default defineBackground(() => {
           const [result] = await chrome.scripting.executeScript({
             target: { tabId: cmd.tabId },
             world: 'MAIN',
-            func: () => {
-              const s = document.createElement('script');
-              s.textContent = `
-                (async () => {
-                  const h = document.querySelector('#edui40_state');
-                  if (h) {
-                    h.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));
-                    await new Promise(r => setTimeout(r, 800));
-                    const btn = [...document.querySelectorAll('div')]
-                      .find(function(d){return d.textContent.trim()==='导入文档'});
-                    if (btn) btn.click();
-                    await new Promise(r => setTimeout(r, 2000));
-                  }
-                })();
-              `;
-              document.body.appendChild(s);
-              return { ok:1 };
+            func: async () => {
+              // Warm up: click editor to focus before hovering toolbar
+              const ed = document.querySelector('#ueditor_0') as HTMLIFrameElement | null;
+              if (ed?.contentDocument?.body) ed.contentDocument.body.click();
+
+              const h = document.querySelector('#edui40_state');
+              if (!h) return { error: 'hover' };
+              const r = h.getBoundingClientRect();
+              h.dispatchEvent(new MouseEvent('mouseenter', { bubbles:true, clientX:r.left+5, clientY:r.top+5 }));
+              await new Promise(r2 => setTimeout(r2, 1500));
+
+              const btn = [...document.querySelectorAll('div')]
+                .find(d => d.textContent!.trim() === '导入文档');
+              if (!btn) return { error: 'menu' };
+              (btn as HTMLElement).click();
+              await new Promise(r2 => setTimeout(r2, 2000));
+              return document.querySelector('input[name="file"]') ? { ok:1 } : { error: 'input' };
             },
           });
           return result?.result || { error: 'no result' };

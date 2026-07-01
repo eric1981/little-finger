@@ -62,6 +62,8 @@ export class BaijiahaoAdapter {
 
     // Body: iframe UEditor or docx import
     if (article.docxB64) {
+      yield { type: 'type_iframe', target: config.bodyIframe, value: ' ', reason: '唤醒UEditor编辑器' };
+      yield { type: 'wait', target: '2000', reason: '等待编辑器就绪' };
       yield { type: 'import_docx_bjh', target: '', value: article.docxB64, reason: '导入docx文件' };
       yield { type: 'wait', target: '8000', reason: '等待docx解析' };
     } else {
