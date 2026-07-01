@@ -136,7 +136,7 @@ export function executeOneStep(
         break;
 
       case 'import_docx_bjh':
-        sendToContent(tabId, { type: 'IMPORT_DOCX_BJH', id: 'docx', value: step.value }, (r) => {
+        sendToContent(tabId, { type: 'IMPORT_DOCX_BJH', id: 'docx', value: step.value, tabId }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'docx导入失败' });
         });
         break;

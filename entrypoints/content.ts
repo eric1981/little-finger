@@ -790,9 +790,8 @@ async function importDocx(base64Content: string, btnSelector: string) {
 async function bjhImportDocx(base64Content: string) {
   try {
     // Run hover + click in MAIN world via chrome.scripting
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const tabId = tabs[0]?.id;
-    if (!tabId) return { success: false, error: '无法获取tab' };
+    const tabId = (m as any).tabId as number;
+    if (!tabId) return { success: false, error: '无法获取tabId' };
 
     const [result] = await chrome.scripting.executeScript({
       target: { tabId },
