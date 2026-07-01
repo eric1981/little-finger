@@ -12,14 +12,20 @@ export type StepResult = { success: boolean; message: string; data?: any };
  * Failed step stops execution (except for optional steps and wait_for_login).
  */
 export async function executeSteps(
-  tabId: number,
+  initTabId: number,
   steps: Step[],
   onProgress: (msg: string, type: 'info' | 'success' | 'error' | 'wait') => void
 ): Promise<StepResult> {
+  let currentTabId = initTabId;
   for (const step of steps) {
     onProgress(`⏳ ${step.reason}`, 'info');
 
-    const result = await executeOneStep(tabId, step, onProgress);
+    const result = await executeOneStep(currentTabId, step, onProgress);
+    
+    // On navigate, update tabId since we create a new tab
+    if (step.type === 'navigate' && result.data?.tabId) {
+      currentTabId = result.data.tabId;
+    }
     
     if (!result.success) {
       onProgress(`❌ ${result.message}`, 'error');
@@ -40,17 +46,19 @@ export function executeOneStep(
   return new Promise((resolve) => {
     switch (step.type) {
       case 'navigate':
-        chrome.tabs.update(tabId, { url: step.target }, () => {
-          // Wait for page load + content script injection
+        chrome.tabs.create({ url: step.target, active: true }, (newTab) => {
+          // Close old tab, use new tab
+          chrome.tabs.remove(tabId, () => {});
+          // Wait for content script injection on new tab
+          const newTabId = newTab.id!;
           const start = Date.now();
           const check = () => {
-            chrome.tabs.sendMessage(tabId, { type: 'PING', id: 'nav' }, (r) => {
+            chrome.tabs.sendMessage(newTabId, { type: 'PING', id: 'nav' }, (r) => {
               if (chrome.runtime.lastError || !r) {
                 if (Date.now() - start < 15000) return setTimeout(check, 500);
-                return resolve({ success: true, message: `导航超时: ${step.target}` });
+                return resolve({ success: true, message: `导航超时: ${step.target}`, data: { tabId: newTabId } });
               }
-              // Extra wait for dynamic content
-              setTimeout(() => resolve({ success: true, message: `导航到 ${step.target}` }), 2000);
+              setTimeout(() => resolve({ success: true, message: `导航到 ${step.target}`, data: { tabId: newTabId } }), 2000);
             });
           };
           setTimeout(check, 2000);
