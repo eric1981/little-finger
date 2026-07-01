@@ -52,7 +52,7 @@ export class SmzdmAdapter {
 
     if (state?.page !== 'editor') {
       yield { type: 'navigate', target: SMZDM_PUBLISH, reason: '打开投稿页面' };
-      yield { type: 'wait', target: '8000', reason: '等待页面完全加载（含 Content Script 注入）' };
+      yield { type: 'wait', target: '3000', reason: '等待动态内容加载' };
     }
 
     // Click "发布新文章"

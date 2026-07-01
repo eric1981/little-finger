@@ -41,7 +41,19 @@ export function executeOneStep(
     switch (step.type) {
       case 'navigate':
         chrome.tabs.update(tabId, { url: step.target }, () => {
-          resolve({ success: true, message: `导航到 ${step.target}` });
+          // Wait for page load + content script injection
+          const start = Date.now();
+          const check = () => {
+            chrome.tabs.sendMessage(tabId, { type: 'PING', id: 'nav' }, (r) => {
+              if (chrome.runtime.lastError || !r) {
+                if (Date.now() - start < 15000) return setTimeout(check, 500);
+                return resolve({ success: true, message: `导航超时: ${step.target}` });
+              }
+              // Extra wait for dynamic content
+              setTimeout(() => resolve({ success: true, message: `导航到 ${step.target}` }), 2000);
+            });
+          };
+          setTimeout(check, 2000);
         });
         break;
 

@@ -72,6 +72,11 @@ export default defineContentScript({
         return getArticleUrl(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
       
+      // ── Ping (health check for content script readiness) ──
+      if (m.type === 'PING') {
+        return { type: 'PONG', id: m.id };
+      }
+      
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
         return executeAction(m as { selector: string; action: string; value?: string }).then(r => ({
