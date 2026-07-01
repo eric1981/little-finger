@@ -54,13 +54,13 @@ export class ToutiaoAdapter {
     if (article.docxB64) {
       yield { type: 'import_docx', target: config.importDocxBtn, value: article.docxB64, reason: '导入docx文件' };
       yield { type: 'wait', target: '6000', reason: '等待docx解析' };
-      // Skip cover upload — docx images used as cover automatically
     } else {
       yield { type: 'find_and_type_rich', target: config.contentText, value: article.content, reason: '填入正文' };
       yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
-      yield { type: 'upload_cover', target: article.title, reason: '搜索并上传封面图' };
-      yield { type: 'wait', target: '2000', reason: '等待封面上传完成' };
     }
+
+    yield { type: 'upload_cover', target: article.title, reason: '搜索并上传封面图' };
+    yield { type: 'wait', target: '2000', reason: '等待封面上传完成' };
 
     yield { type: 'find_and_click', target: config.previewText, reason: '点击预览并发布' };
     yield { type: 'wait', target: '3000', reason: '等待预览弹窗' };
