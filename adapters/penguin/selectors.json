@@ -1,0 +1,15 @@
+{
+  "editor": {
+    "titleSelector": "span[data-placeholder*=\"标题\"]",
+    "contentEditor": ".ProseMirror.ExEditor-basic",
+    "contentText": "正文",
+    "publishBtn": ["发布"],
+    "declareBtn1": ".omui-button--dashed",
+    "declareBtn2": ".omui-button--primary"
+  },
+  "stateTexts": {
+    "loggedOut": ["登录", "账号登录", "手机登录"],
+    "captcha": ["验证码", "安全验证"],
+    "publishSuccess": ["发布成功", "已发布"]
+  }
+}

@@ -29,6 +29,7 @@ export default defineConfig({
       'https://*.toutiao.com/*',
       'https://mp.toutiao.com/*',
       'https://baijiahao.baidu.com/*',
+      'https://om.qq.com/*',
       'https://juejin.cn/*',
     ],
     side_panel: {
