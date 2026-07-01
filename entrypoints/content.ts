@@ -796,12 +796,11 @@ async function bjhImportDocx(base64Content: string) {
     hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
     await wait(randomBetween(1000, 1500));
 
-    // Step 2: Click "导入文档" (retry if menu not yet visible)
-    let menuBtn: HTMLElement | null = null;
-    for (let i = 0; i < 3; i++) {
+    // Step 2: Click "导入文档" by class pattern (text search fails on invisible menu)
+    let menuBtn: HTMLElement | null = document.querySelector('[class*="FeEditorApp-"][class*="-label"]') as HTMLElement;
+    // Verify it's the right element by text content
+    if (!menuBtn || !menuBtn.textContent?.includes('导入文档')) {
       menuBtn = findByVisibleText('导入文档') as HTMLElement | null;
-      if (menuBtn) break;
-      await wait(500);
     }
     if (!menuBtn) return { success: false, error: '导入文档菜单未找到' };
     menuBtn.click();
