@@ -1,0 +1,44 @@
+{
+  "project": "little-finger",
+  "description": "AI-driven browser automation Chrome extension with platform adapters",
+  "generatedAt": "2026-07-01",
+  "nodes": [
+    {"id": "entry", "label": "入口", "layer": 0, "files": ["publish.py", "native-host/little-finger-cli.py", "native-host/little-finger-host.py"]},
+    {"id": "bg", "label": "Background SW", "layer": 1, "files": ["entrypoints/background.ts"], "desc": "Native Messaging + 命令路由 + get_article_url"},
+    {"id": "executor", "label": "Executor", "layer": 1, "files": ["core/executor.ts"], "desc": "15种 Step 类型执行器"},
+    {"id": "content", "label": "Content Script", "layer": 2, "files": ["entrypoints/content.ts"], "desc": "DOM操作 (React click/type/paste/Pexels/iframe/docx)"},
+    {"id": "types", "label": "类型定义", "layer": 1, "files": ["core/types.ts"]},
+    
+    {"id": "zhihu", "label": "知乎 Adapter", "layer": 3, "files": ["adapters/zhihu/adapter.ts"], "desc": "Draft.js 编辑器 + mammoth docx 导入"},
+    {"id": "toutiao", "label": "头条 Adapter", "layer": 3, "files": ["adapters/toutiao/adapter.ts"], "desc": "ProseMirror 编辑器 + DataTransfer docx 导入"},
+    {"id": "baijiahao", "label": "百家号 Adapter", "layer": 3, "files": ["adapters/baijiahao/adapter.ts"], "desc": "iframe UEditor + Lexical 标题 + 3步 docx 导入"},
+    
+    {"id": "pexels", "label": "Pexels 封面", "layer": 4, "desc": "Background SW 调 API → fetch 图片 → Canvas 转 JPEG → DataTransfer 注入"},
+    {"id": "mammoth", "label": "Mammoth.js", "layer": 4, "files": ["public/mammoth.js"], "desc": "CDN 封禁后本地打包，docx → HTML 完整格式转换"},
+    {"id": "clipboard", "label": "剪贴板注入", "layer": 4, "desc": "ClipboardEvent('paste') → Draft.js paste handler 消化 HTML"}
+  ],
+  "edges": [
+    {"from": "entry", "to": "bg", "label": "文件队列: ~/.little-finger/"},
+    {"from": "bg", "to": "executor", "label": "executeSteps()"},
+    {"from": "executor", "to": "content", "label": "chrome.tabs.sendMessage"},
+    {"from": "bg", "to": "zhihu", "label": "路由: platform"},
+    {"from": "bg", "to": "toutiao", "label": "路由: platform"},
+    {"from": "bg", "to": "baijiahao", "label": "路由: platform"},
+    {"from": "content", "to": "pexels", "label": "UPLOAD_COVER"},
+    {"from": "content", "to": "mammoth", "label": "import * as mammoth"},
+    {"from": "content", "to": "clipboard", "label": "zhihuImportDocx"}
+  ],
+  "stepTypes": [
+    "navigate", "wait", "find_and_click", "find_and_click_optional",
+    "find_and_type", "find_and_type_rich", "type_selector", "wait_for_login",
+    "upload_cover", "type_iframe", "import_docx", "import_docx_bjh",
+    "import_docx_zhihu", "get_article_url", "check"
+  ],
+  "keyLessons": [
+    "execCommand('insertText/insertHTML') 被 Draft.js 拦截 → 用 ClipboardEvent('paste')",
+    "React 忽略合成 click 事件 → reactClick() 通过 __reactFiber 直接调 handler",
+    "百家号封面上传: 跳过本地上传按钮，直接找 input[name=media] DataTransfer 注入",
+    "知乎 docx 导入: mammoth.js 本地打包(CDN被CSP封) → 粘贴事件注入 Draft.js",
+    "文件过大时 CLI 参数超限 → 改用 --file tempfile 传参"
+  ]
+}
