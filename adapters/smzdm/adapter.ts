@@ -5,7 +5,6 @@
 
 import type { Article, DomSnapshot, PageState, Step } from '../../core/types';
 
-const SMZDM_INDEX = 'https://post.smzdm.com/';
 const SMZDM_PUBLISH = 'https://post.smzdm.com/tougao/';
 
 let config = {
@@ -43,17 +42,12 @@ export class SmzdmAdapter {
   }
 
   *publish(article: Article, state?: PageState): Generator<Step> {
-    if (!state || state.page === 'unknown') {
-      yield { type: 'navigate', target: SMZDM_INDEX, reason: '打开什么值得买' };
-      yield { type: 'wait', target: '3000', reason: '等待页面加载' };
+    if (state?.page !== 'editor') {
+      yield { type: 'navigate', target: SMZDM_PUBLISH, reason: '打开投稿页面' };
+      yield { type: 'wait', target: '6000', reason: '等待页面加载' };
     }
 
     yield { type: 'wait_for_login', target: 'smzdm.com', reason: '等待登录什么值得买' };
-
-    if (state?.page !== 'editor') {
-      yield { type: 'navigate', target: SMZDM_PUBLISH, reason: '打开投稿页面' };
-      yield { type: 'wait', target: '3000', reason: '等待动态内容加载' };
-    }
 
     // Click "发布新文章"
     yield { type: 'find_and_click', target: config.newPostLink, reason: '点击发布新文章' };
