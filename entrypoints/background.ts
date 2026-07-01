@@ -220,7 +220,7 @@ function parseAIJson(text: string): Record<string, unknown> | null {
 async function handlePexelsSearch(m: { type: string; id: string; text?: string }) {
   try {
     const query = m.text || 'abstract';
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`;
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=square&size=large`;
     const resp = await fetch(url, { headers: { Authorization: await getApiKey('pexels') } });
     if (!resp.ok) return { success: false, error: `Pexels API: ${resp.status}` };
     

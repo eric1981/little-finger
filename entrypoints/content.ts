@@ -8,7 +8,7 @@ export default defineContentScript({
   main() {
     console.log('[LF:CS] Injected:', window.location.href);
 
-    browser.runtime.onMessage.addListener((msg: unknown) => {
+    async function handleCommand(msg: unknown): Promise<any> {
       const m = msg as { type: string; id?: string; text?: string; value?: string; amount?: number; selector?: string; action?: string };
       
       if (m.type === 'SAMPLE_DOM') {
@@ -83,7 +83,19 @@ export default defineContentScript({
           type: 'ACTION_RESULT', id: m.id, ...r,
         }));
       }
-    });
+    }
+
+    browser.runtime.onMessage.addListener(handleCommand);
+
+    // Fallback: polling channel for smzdm (probev3.js blocks chrome.runtime)
+    setInterval(() => {
+      const cmd = (window as any).__lf_cmd;
+      if (!cmd) return;
+      delete (window as any).__lf_cmd;
+      handleCommand(cmd).then(r => {
+        (window as any).__lf_result = r;
+      });
+    }, 200);
   },
 });
 
@@ -134,7 +146,11 @@ function findByVisibleText(text: string): Element | null {
   let best: { el: Element; score: number } | null = null;
   
   for (const el of candidates) {
-    const rect = el.getBoundingClientRect();
+    let rect = el.getBoundingClientRect();
+    // SPAN often has zero dimensions but is inside a visible container
+    if ((rect.width === 0 || rect.height === 0) && el.tagName === 'SPAN' && el.parentElement) {
+      rect = el.parentElement.getBoundingClientRect();
+    }
     if (rect.width === 0 || rect.height === 0) continue;
     
     const elText = (el.textContent || '').trim();
@@ -151,7 +167,14 @@ function findByVisibleText(text: string): Element | null {
     if (tag === 'button' || tag === 'a') score += 10;
     if (el.getAttribute('role') === 'button') score += 10;
     
-    if (!best || score > best.score) best = { el, score };
+    if (!best || score > best.score) {
+      best = { el, score };
+    } else if (score === best.score) {
+      // Equal score: prefer smaller element (more specific, likely handler target)
+      const prevArea = best.el.getBoundingClientRect().width * best.el.getBoundingClientRect().height;
+      const thisArea = rect.width * rect.height;
+      if (thisArea < prevArea) best = { el, score };
+    }
   }
   
   return best?.el || null;
@@ -191,6 +214,14 @@ async function findAndClick(text: string) {
     el2.focus();
     await wait(randomBetween(120, 350)); // "finding the button"
     el2.click();
+    // Traverse up to find the clickable container (React handler may be 2-3 levels up)
+    if (el2.tagName === 'SPAN') {
+      let parent: HTMLElement | null = el2.parentElement;
+      for (let i = 0; i < 4 && parent; i++) {
+        reactClick(parent);
+        parent = parent.parentElement;
+      }
+    }
     await wait(randomBetween(250, 600)); // post-click reaction
     
     return { success: true, message: `已点击 "${text}"`, selector: buildSelector(el2) };
@@ -946,12 +977,15 @@ async function injectImage(query: string, fileInputSelector: string) {
     if (!imageUrl) return { success: false, error: '未找到图片' };
     const imgResp = await fetch(imageUrl);
     const blob = await imgResp.blob();
-    let file: File;
-    if (blob.type === 'image/jpeg' || blob.type === 'image/png') {
-      file = new File([blob], 'image.jpg', { type: blob.type });
-    } else {
-      file = await convertToJpeg(blob);
-    }
+    
+    // Resize to at least 800x800 (smzdm cover requirement)
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(bitmap.width, 800);
+    canvas.height = Math.max(bitmap.height, 800);
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const jpegBlob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/jpeg', 0.92));
+    const file = new File([jpegBlob], 'cover.jpg', { type: 'image/jpeg' });
     let fi = document.querySelector(fileInputSelector || 'input[name="file"]') as HTMLInputElement | null;
     if (!fi) fi = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement | null;
     if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; document.body.appendChild(fi); }

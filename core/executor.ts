@@ -4,6 +4,7 @@
  */
 
 import type { Step } from './types';
+import { sendToContent } from './fallback-channel';
 
 export type StepResult = { success: boolean; message: string; data?: any };
 
@@ -52,17 +53,9 @@ export function executeOneStep(
         break;
 
       case 'find_and_click':
-        chrome.tabs.sendMessage(tabId, {
+        sendToContent(tabId, {
           type: 'FIND_AND_CLICK', id: 'adapter', text: step.target,
         }, (r) => {
-          // If page navigated (bfcache disconnect), click likely succeeded
-          if (chrome.runtime.lastError && !r) {
-            const err = chrome.runtime.lastError.message || '';
-            if (err.includes('back/forward cache') || err.includes('closed')) {
-              return resolve({ success: true, message: `已点击（页面已导航）` });
-            }
-            return resolve({ success: false, message: err });
-          }
           resolve(r?.success
             ? { success: true, message: r.message }
             : { success: false, message: r?.error || '点击失败' });
@@ -70,7 +63,7 @@ export function executeOneStep(
         break;
 
       case 'find_and_click_optional':
-        chrome.tabs.sendMessage(tabId, {
+        sendToContent(tabId, {
           type: 'FIND_AND_CLICK', id: 'adapter', text: step.target,
         }, (r) => {
           resolve({ success: true, message: r?.success ? r.message : `跳过: ${r?.error}` });
@@ -78,7 +71,7 @@ export function executeOneStep(
         break;
 
       case 'find_and_type':
-        chrome.tabs.sendMessage(tabId, {
+        sendToContent(tabId, {
           type: 'FIND_AND_TYPE', id: 'adapter', text: step.target, value: step.value,
         }, (r) => {
           resolve(r?.success
@@ -88,7 +81,7 @@ export function executeOneStep(
         break;
 
       case 'find_and_type_rich':
-        chrome.tabs.sendMessage(tabId, {
+        sendToContent(tabId, {
           type: 'FIND_AND_TYPE', id: 'adapter', text: step.target, value: step.value,
         }, (r) => {
           resolve(r?.success
@@ -98,7 +91,7 @@ export function executeOneStep(
         break;
 
       case 'type_selector':
-        chrome.tabs.sendMessage(tabId, {
+        sendToContent(tabId, {
           type: 'TYPE_SELECTOR', id: 'adapter', selector: step.target, value: step.value,
         }, (r) => {
           resolve(r?.success
@@ -108,7 +101,7 @@ export function executeOneStep(
         break;
 
       case 'sample':
-        chrome.tabs.sendMessage(tabId, {
+        sendToContent(tabId, {
           type: 'SAMPLE_DOM', id: 'check_state',
         }, (r) => {
           if (!r?.data) {
@@ -125,31 +118,31 @@ export function executeOneStep(
         break;
 
       case 'upload_cover':
-        chrome.tabs.sendMessage(tabId, { type: 'UPLOAD_COVER', id: 'cover', text: step.target, value: step.value }, (r) => {
+        sendToContent(tabId, { type: 'UPLOAD_COVER', id: 'cover', text: step.target, value: step.value }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || '封面上传失败' });
         });
         break;
 
       case 'type_iframe':
-        chrome.tabs.sendMessage(tabId, { type: 'TYPE_IFRAME', id: 'iframe', selector: step.target, value: step.value }, (r) => {
+        sendToContent(tabId, { type: 'TYPE_IFRAME', id: 'iframe', selector: step.target, value: step.value }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'iframe输入失败' });
         });
         break;
 
       case 'import_docx':
-        chrome.tabs.sendMessage(tabId, { type: 'IMPORT_DOCX', id: 'docx', value: step.value, selector: step.target }, (r) => {
+        sendToContent(tabId, { type: 'IMPORT_DOCX', id: 'docx', value: step.value, selector: step.target }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'docx导入失败' });
         });
         break;
 
       case 'import_docx_bjh':
-        chrome.tabs.sendMessage(tabId, { type: 'IMPORT_DOCX_BJH', id: 'docx', value: step.value }, (r) => {
+        sendToContent(tabId, { type: 'IMPORT_DOCX_BJH', id: 'docx', value: step.value }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'docx导入失败' });
         });
         break;
 
       case 'import_docx_zhihu':
-        chrome.tabs.sendMessage(tabId, { type: 'IMPORT_DOCX_ZHIHU', id: 'docx', value: step.value }, (r) => {
+        sendToContent(tabId, { type: 'IMPORT_DOCX_ZHIHU', id: 'docx', value: step.value }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || 'docx导入失败' });
         });
         break;
@@ -157,7 +150,7 @@ export function executeOneStep(
       case 'get_article_url':
         chrome.tabs.update(tabId, { url: step.target, active: true }, () => {
           setTimeout(() => {
-            chrome.tabs.sendMessage(tabId, { type: 'GET_ARTICLE_URL', id: 'url', value: step.value }, (r) => {
+            sendToContent(tabId, { type: 'GET_ARTICLE_URL', id: 'url', value: step.value }, (r) => {
               resolve(r?.success ? { success: true, message: r.message, data: { url: r.url } } 
                       : { success: false, message: r?.error || '获取URL失败' });
             });
@@ -166,7 +159,7 @@ export function executeOneStep(
         break;
 
       case 'inject_image':
-        chrome.tabs.sendMessage(tabId, { type: 'INJECT_IMAGE', id: 'img', text: step.value, selector: step.target }, (r) => {
+        sendToContent(tabId, { type: 'INJECT_IMAGE', id: 'img', text: step.value, selector: step.target }, (r) => {
           resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || '图片注入失败' });
         });
         break;
@@ -186,7 +179,7 @@ export function executeOneStep(
               return resolve({ success: false, message: `未导航到 ${urlPattern}` });
             }
             // URL matched — now wait for content script
-            chrome.tabs.sendMessage(tabId, { type: 'PING', id: 'wp' }, (r) => {
+            sendToContent(tabId, { type: 'PING', id: 'wp' }, (r) => {
               if (chrome.runtime.lastError || !r) return setTimeout(poll, 500);
               resolve({ success: true, message: `页面就绪: ${tab.url}` });
             });
@@ -218,7 +211,7 @@ async function waitForLogin(
     const poll = () => {
       if (count++ > 120) { resolve({ success: false, message: '登录等待超时' }); return; }
       
-      chrome.tabs.sendMessage(tabId, { type: 'SAMPLE_DOM', id: 'login_poll' }, (r) => {
+      sendToContent(tabId, { type: 'SAMPLE_DOM', id: 'login_poll' }, (r) => {
         if (chrome.runtime.lastError || !r?.data) { setTimeout(poll, 2000); return; }
         
         const url: string = r.data.url || '';

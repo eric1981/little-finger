@@ -49,8 +49,8 @@ export class SmzdmAdapter {
 
     yield { type: 'wait_for_login', target: 'smzdm.com', reason: '等待登录什么值得买' };
 
-    // Click "发布新文章"
-    yield { type: 'find_and_click', target: config.newPostLink, reason: '点击发布新文章' };
+    // Click "发布新文章" (navigates away — expect bfcache disconnect)
+    yield { type: 'find_and_click_optional', target: config.newPostLink, reason: '点击发布新文章' };
     yield { type: 'wait_for_page', target: '/edit/', reason: '等待编辑器页面加载' };
 
     // Title
@@ -71,6 +71,7 @@ export class SmzdmAdapter {
     yield { type: 'find_and_click', target: config.coverBtn, reason: '点击添加方图' };
     yield { type: 'wait', target: '1000', reason: '等待封面弹窗' };
     yield { type: 'inject_image', target: config.fileInputSelector, value: article.title, reason: '注入封面图' };
+    yield { type: 'wait', target: '2000', reason: '等待图片上传渲染' };
     yield { type: 'find_and_click', target: config.setCoverBtn, reason: '点击设为封面图' };
     yield { type: 'wait', target: '3000', reason: '等待封面设置' };
     yield { type: 'find_and_click', target: config.coverConfirmBtn, reason: '点击确认' };
