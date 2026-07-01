@@ -9,7 +9,7 @@ const SMZDM_INDEX = 'https://post.smzdm.com/';
 const SMZDM_PUBLISH = 'https://post.smzdm.com/tougao/';
 
 let config = {
-  newPostLink: '.release-new',
+  newPostLink: '发布新文章',
   titleSelector: 'textarea[placeholder*="文章标题"]',
   addImageBtn: '添加图片',
   insertImageBtn: '插入正文',
@@ -52,7 +52,7 @@ export class SmzdmAdapter {
 
     if (state?.page !== 'editor') {
       yield { type: 'navigate', target: SMZDM_PUBLISH, reason: '打开投稿页面' };
-      yield { type: 'wait', target: '5000', reason: '等待编辑器加载' };
+      yield { type: 'wait', target: '8000', reason: '等待页面完全加载（含 Content Script 注入）' };
     }
 
     // Click "发布新文章"
