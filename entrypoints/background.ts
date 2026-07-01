@@ -63,10 +63,16 @@ export default defineBackground(() => {
               const h = document.querySelector('#edui40_state');
               if (!h) return { error: 'hover' };
               const r = h.getBoundingClientRect();
-              (['pointerover','mouseover','mouseenter'] as const).forEach(t => {
-                h.dispatchEvent(new MouseEvent(t, { bubbles:true, clientX:r.left+5, clientY:r.top+5 }));
-              });
-              await new Promise(r2 => setTimeout(r2, 1500));
+              // Dispatch hover events with retry (UEditor toolbar may need warmup)
+              for (let i = 0; i < 3; i++) {
+                (['pointerover','mouseover','mouseenter'] as const).forEach(t => {
+                  h.dispatchEvent(new MouseEvent(t, { bubbles:true, clientX:r.left+5, clientY:r.top+5 }));
+                });
+                await new Promise(r2 => setTimeout(r2, 1000));
+                const btn2 = [...document.querySelectorAll('div')]
+                  .find(d => d.textContent!.trim() === '导入文档');
+                if (btn2) break;
+              }
               const btn = [...document.querySelectorAll('div')]
                 .find(d => d.textContent!.trim() === '导入文档');
               if (!btn) return { error: 'menu' };
