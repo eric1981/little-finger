@@ -54,7 +54,7 @@ export default defineContentScript({
 
       // ── Import .docx file (Baijiahao 3-step: hover → click import → click file btn) ──
       if (m.type === 'IMPORT_DOCX_BJH') {
-        return bjhImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+        return bjhImportDocx(m.value || '', m.tabId as number).then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
 
       // ── Import .docx file (Zhihu 2-step: click 导入 → click 导入文档) ──
@@ -787,10 +787,9 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 // ─── Import .docx file (Baijiahao — 3 step flow) ───
 
-async function bjhImportDocx(base64Content: string) {
+async function bjhImportDocx(base64Content: string, tabId: number) {
   try {
     // Run hover + click in MAIN world via chrome.scripting
-    const tabId = (m as any).tabId as number;
     if (!tabId) return { success: false, error: '无法获取tabId' };
 
     const [result] = await chrome.scripting.executeScript({
