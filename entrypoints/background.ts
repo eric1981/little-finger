@@ -51,6 +51,24 @@ export default defineBackground(() => {
     const m = msg as { type: string; id: string; text?: string };
     if (m.type === 'PARSE_INTENT') return handleParseIntent(m);
     if (m.type === 'SEARCH_PEXELS') return handlePexelsSearch(m);
+    if (m.type === 'EXECUTE_IN_MAIN') {
+      const cmd = m as { type: string; id: string; code: string };
+      return (async () => {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.id) return { error: 'no active tab' };
+        try {
+          const [result] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            world: 'MAIN',
+            func: (code: string) => eval(code),
+            args: [cmd.code],
+          });
+          return result?.result || { error: 'no result' };
+        } catch (e: any) {
+          return { error: e.message };
+        }
+      })();
+    }
   });
 });
 

@@ -789,38 +789,38 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 async function bjhImportDocx(base64Content: string) {
   try {
-    // Step 1: Trigger dropdown via UEditor internal API + hover event
-    const hoverEl = document.querySelector('#edui40_state') as HTMLElement | null;
-    if (!hoverEl) return { success: false, error: 'hover元素未找到' };
+    // Run in MAIN world (where Console scripts execute)
+    // Content script isolated world may not trigger UEditor dropdown
+    const result = await new Promise<any>((resolve) => {
+      chrome.runtime.sendMessage({
+        type: 'EXECUTE_IN_MAIN',
+        id: 'bjh_docx',
+        code: `
+          (async () => {
+            const hoverEl = document.querySelector('#edui40_state');
+            if (!hoverEl) return { error: 'hover元素未找到' };
+            hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            await new Promise(r => setTimeout(r, 1500));
+            
+            const btn = [...document.querySelectorAll('div')]
+              .find(d => d.textContent.trim() === '导入文档');
+            if (!btn) return { error: '导入文档菜单未找到' };
+            btn.click();
+            await new Promise(r => setTimeout(r, 2000));
+            
+            const fi = document.querySelector('input[name="file"]');
+            if (!fi) return { error: '找不到docx上传input' };
+            return { success: true, fiExists: true };
+          })()
+        `
+      }, (resp) => resolve(resp));
+    });
     
-    // Directly trigger UEditor's Stateful_onMouseOver if available
-    const ueApi = (window as any).$EDITORUI_V2;
-    if (ueApi?.['edui40']?.Stateful_onMouseOver) {
-      ueApi['edui40'].Stateful_onMouseOver(new MouseEvent('mouseover', { bubbles: true }), hoverEl);
-    }
-    hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-    await wait(randomBetween(1500, 2000));
+    if (!result?.success) return { success: false, error: result?.error || '导入失败' };
 
-    // Step 2: Click "导入文档" — try multiple approaches
-    let menuBtn: HTMLElement | null = null;
-    // Try class pattern first (can match hidden elements)
-    menuBtn = document.querySelector('[class*="FeEditorApp-"][class*="-label"]') as HTMLElement;
-    if (!menuBtn || !menuBtn.textContent?.includes('导入文档')) {
-      // Fallback: search all divs by text
-      const allDivs = document.querySelectorAll('div');
-      for (const d of allDivs) {
-        if (d.textContent?.trim() === '导入文档') { menuBtn = d as HTMLElement; break; }
-      }
-    }
-    if (!menuBtn) return { success: false, error: '导入文档菜单未找到' };
-    menuBtn.click();
-    await wait(randomBetween(1500, 2500));
-
-    // Step 3: Find the hidden file input (now exposed) and inject
-    let fi = document.querySelector('input[name="file"][accept*="docx"]') as HTMLInputElement | null
-          || document.querySelector('input[name="file"][accept*=".docx"]') as HTMLInputElement | null
-          || document.querySelector('input[name="file"][accept*="doc"]') as HTMLInputElement | null;
+    // Now inject the file (from isolated world — DataTransfer works here)
+    const fi = document.querySelector('input[name="file"]') as HTMLInputElement | null;
     if (!fi) return { success: false, error: '找不到docx上传input' };
 
     const binary = atob(base64Content);
