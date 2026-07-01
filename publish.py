@@ -130,7 +130,7 @@ def main():
             print("❌ --docx 需要配合 --title 使用")
             sys.exit(1)
         title = args.title
-        content = f"[从 {Path(args.docx).name} 导入]"
+        content = ""  # will be filled from docx text extraction below
     elif args.file:
         text = Path(args.file).read_text(encoding="utf-8").strip()
         lines = text.split("\n", 1)
@@ -170,6 +170,10 @@ def main():
             pass
 
         print(f"📦 {docxPath.name} | base64: {len(docxB64)} chars | 文本: {len(docxText)} 字, {len(paras)} 段")
+
+        # Fill content with extracted text for platforms that need it
+        if docxText and not content:
+            content = docxText
 
     # 确定目标平台
     if args.platform:
