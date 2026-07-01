@@ -55,6 +55,14 @@ export function executeOneStep(
         chrome.tabs.sendMessage(tabId, {
           type: 'FIND_AND_CLICK', id: 'adapter', text: step.target,
         }, (r) => {
+          // If page navigated (bfcache disconnect), click likely succeeded
+          if (chrome.runtime.lastError && !r) {
+            const err = chrome.runtime.lastError.message || '';
+            if (err.includes('back/forward cache') || err.includes('closed')) {
+              return resolve({ success: true, message: `已点击（页面已导航）` });
+            }
+            return resolve({ success: false, message: err });
+          }
           resolve(r?.success
             ? { success: true, message: r.message }
             : { success: false, message: r?.error || '点击失败' });
