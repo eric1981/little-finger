@@ -789,9 +789,23 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 async function bjhImportDocx(base64Content: string) {
   try {
-    // Find the docx input directly (UEditor has a hidden file input)
-    const fi = document.querySelector('input[type="file"][accept*="doc"]')
-           || document.querySelector('input[type="file"][accept*="docx"]') as HTMLInputElement | null;
+    // Step 1: Hover over the insert toolbar button
+    const hoverEl = document.querySelector('#edui40_state') as HTMLElement | null;
+    if (!hoverEl) return { success: false, error: 'hover元素未找到' };
+    hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await wait(randomBetween(500, 1000));
+
+    // Step 2: Click "导入文档" menu item
+    const menuBtn = findByVisibleText('导入文档') as HTMLElement | null;
+    if (!menuBtn) return { success: false, error: '导入文档菜单未找到' };
+    menuBtn.click();
+    await wait(randomBetween(1000, 2000));
+
+    // Step 3: Find the hidden file input (now exposed) and inject
+    let fi = document.querySelector('input[name="file"][accept*="docx"]') as HTMLInputElement | null
+          || document.querySelector('input[name="file"][accept*=".docx"]') as HTMLInputElement | null
+          || document.querySelector('input[name="file"][accept*="doc"]') as HTMLInputElement | null;
     if (!fi) return { success: false, error: '找不到docx上传input' };
 
     const binary = atob(base64Content);
