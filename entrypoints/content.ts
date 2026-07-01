@@ -794,13 +794,18 @@ async function bjhImportDocx(base64Content: string) {
     if (!hoverEl) return { success: false, error: 'hover元素未找到' };
     hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
     hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    await wait(randomBetween(500, 1000));
+    await wait(randomBetween(1000, 1500));
 
-    // Step 2: Click "导入文档" menu item
-    const menuBtn = findByVisibleText('导入文档') as HTMLElement | null;
+    // Step 2: Click "导入文档" (retry if menu not yet visible)
+    let menuBtn: HTMLElement | null = null;
+    for (let i = 0; i < 3; i++) {
+      menuBtn = findByVisibleText('导入文档') as HTMLElement | null;
+      if (menuBtn) break;
+      await wait(500);
+    }
     if (!menuBtn) return { success: false, error: '导入文档菜单未找到' };
     menuBtn.click();
-    await wait(randomBetween(1000, 2000));
+    await wait(randomBetween(1500, 2500));
 
     // Step 3: Find the hidden file input (now exposed) and inject
     let fi = document.querySelector('input[name="file"][accept*="docx"]') as HTMLInputElement | null
