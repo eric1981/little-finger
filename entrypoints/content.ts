@@ -54,7 +54,7 @@ export default defineContentScript({
 
       // ── Import .docx file (Baijiahao 3-step: hover → click import → click file btn) ──
       if (m.type === 'IMPORT_DOCX_BJH') {
-        return bjhImportDocx(m.value || '', m.tabId as number).then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+        return bjhImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
 
       // ── Import .docx file (Zhihu 2-step: click 导入 → click 导入文档) ──
@@ -787,17 +787,17 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 // ─── Import .docx file (Baijiahao — 3 step flow) ───
 
-async function bjhImportDocx(base64Content: string, tabId: number) {
+async function bjhImportDocx(base64Content: string) {
   try {
-    // Step 1+2: Run hover + click in MAIN world via Background SW
-    const result = await new Promise<any>((resolve) => {
-      chrome.runtime.sendMessage({ type: 'EXECUTE_IN_MAIN', id: 'bjh_docx', tabId }, (r) => resolve(r));
-    });
+    // 1. Click "导入文档" (visible in DOM, no hover needed)
+    const clickResult = await findAndClick('导入文档');
+    if (!clickResult.success) return clickResult;
+    await wait(randomBetween(1500, 2500));
 
-    if (result?.error) return { success: false, error: result.error };
-
-    // Step 3: Inject file
-    const fi = document.querySelector('input[name="file"]') as HTMLInputElement | null;
+    // 2. Find file input and inject
+    let fi = document.querySelector('input[name="file"][accept*="docx"]') as HTMLInputElement | null
+          || document.querySelector('input[name="file"][accept*=".docx"]') as HTMLInputElement | null
+          || document.querySelector('input[name="file"]') as HTMLInputElement | null;
     if (!fi) return { success: false, error: '找不到docx上传input' };
 
     const binary = atob(base64Content);
@@ -816,8 +816,7 @@ async function bjhImportDocx(base64Content: string, tabId: number) {
   }
 }
 
-// ─── Import .docx file (Zhihu — 2 step flow) ───
-
+// ─── Import .docx file (Zhihu
 async function zhihuImportDocx(base64Content: string) {
   try {
     // Convert base64 to ArrayBuffer
