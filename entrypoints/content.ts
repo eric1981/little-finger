@@ -789,18 +789,29 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 async function bjhImportDocx(base64Content: string) {
   try {
-    // Step 1: Hover over the insert toolbar button
+    // Step 1: Trigger dropdown via UEditor internal API + hover event
     const hoverEl = document.querySelector('#edui40_state') as HTMLElement | null;
     if (!hoverEl) return { success: false, error: 'hover元素未找到' };
-    hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    
+    // Directly trigger UEditor's Stateful_onMouseOver if available
+    const ueApi = (window as any).$EDITORUI_V2;
+    if (ueApi?.['edui40']?.Stateful_onMouseOver) {
+      ueApi['edui40'].Stateful_onMouseOver(new MouseEvent('mouseover', { bubbles: true }), hoverEl);
+    }
     hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    await wait(randomBetween(1000, 1500));
+    hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    await wait(randomBetween(1500, 2000));
 
-    // Step 2: Click "导入文档" by class pattern (text search fails on invisible menu)
-    let menuBtn: HTMLElement | null = document.querySelector('[class*="FeEditorApp-"][class*="-label"]') as HTMLElement;
-    // Verify it's the right element by text content
+    // Step 2: Click "导入文档" — try multiple approaches
+    let menuBtn: HTMLElement | null = null;
+    // Try class pattern first (can match hidden elements)
+    menuBtn = document.querySelector('[class*="FeEditorApp-"][class*="-label"]') as HTMLElement;
     if (!menuBtn || !menuBtn.textContent?.includes('导入文档')) {
-      menuBtn = findByVisibleText('导入文档') as HTMLElement | null;
+      // Fallback: search all divs by text
+      const allDivs = document.querySelectorAll('div');
+      for (const d of allDivs) {
+        if (d.textContent?.trim() === '导入文档') { menuBtn = d as HTMLElement; break; }
+      }
     }
     if (!menuBtn) return { success: false, error: '导入文档菜单未找到' };
     menuBtn.click();
