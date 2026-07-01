@@ -70,6 +70,6 @@ export class PenguinAdapter {
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
 
     // Get URL
-    yield { type: 'get_article_url', target: 'https://om.qq.com/main/creation', value: article.title, reason: '获取文章URL' };
+    yield { type: 'get_article_url', target: 'https://om.qq.com/main/management/articleManage', value: article.title, reason: '获取文章URL' };
   }
 }

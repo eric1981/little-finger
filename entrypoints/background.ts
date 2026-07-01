@@ -136,7 +136,7 @@ async function executeCommand(cmd: {
         zhihu: 'https://www.zhihu.com/creator/manage/creation/all',
         toutiao: 'https://mp.toutiao.com/profile_v4/graphic/articles',
         baijiahao: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=',
-        qiehao: 'https://om.qq.com/main/creation',
+        qiehao: 'https://om.qq.com/main/management/articleManage',
       };
       const mgmtUrl = platformUrls[cmd.platform];
       if (!mgmtUrl) return { success: false, message: `未知平台: ${cmd.platform}`, data: null };
