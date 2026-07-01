@@ -183,6 +183,30 @@ export function executeOneStep(
         });
         break;
 
+      case 'wait_for_page':
+        // Poll: wait for URL to match, then content script ready
+        const urlPattern = step.target;
+        const t0 = Date.now();
+        const poll = () => {
+          chrome.tabs.get(tabId, (tab) => {
+            if (chrome.runtime.lastError || !tab) {
+              if (Date.now() - t0 < 20000) return setTimeout(poll, 500);
+              return resolve({ success: false, message: `页面超时: ${urlPattern}` });
+            }
+            if (!tab.url?.includes(urlPattern)) {
+              if (Date.now() - t0 < 20000) return setTimeout(poll, 500);
+              return resolve({ success: false, message: `未导航到 ${urlPattern}` });
+            }
+            // URL matched — now wait for content script
+            chrome.tabs.sendMessage(tabId, { type: 'PING', id: 'wp' }, (r) => {
+              if (chrome.runtime.lastError || !r) return setTimeout(poll, 500);
+              resolve({ success: true, message: `页面就绪: ${tab.url}` });
+            });
+          });
+        };
+        setTimeout(poll, 500);
+        break;
+
       case 'wait_for_login':
         waitForLogin(tabId, step, onProgress).then(resolve);
         break;

@@ -100,7 +100,8 @@ export interface Step {
        | 'import_docx_bjh'
        | 'import_docx_zhihu'
        | 'get_article_url'
-       | 'inject_image';     // Pexels search + DataTransfer into a file input
+       | 'inject_image'
+       | 'wait_for_page';    // wait for page URL change + content script ready
   
   // ═══ 新增 Step 类型需同步修改 4 个文件 ═══
   // 1. 本文件 (types.ts) — 加 type 字面量

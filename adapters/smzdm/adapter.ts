@@ -57,7 +57,7 @@ export class SmzdmAdapter {
 
     // Click "发布新文章"
     yield { type: 'find_and_click', target: config.newPostLink, reason: '点击发布新文章' };
-    yield { type: 'wait', target: '3000', reason: '等待文章编辑器加载' };
+    yield { type: 'wait_for_page', target: '/edit/', reason: '等待编辑器页面加载' };
 
     // Title
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
