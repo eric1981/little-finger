@@ -147,14 +147,19 @@ export function executeOneStep(
         break;
 
       case 'get_article_url':
-        // Navigate to management page, then extract URL
         chrome.tabs.update(tabId, { url: step.target, active: true }, () => {
           setTimeout(() => {
             chrome.tabs.sendMessage(tabId, { type: 'GET_ARTICLE_URL', id: 'url', value: step.value }, (r) => {
               resolve(r?.success ? { success: true, message: r.message, data: { url: r.url } } 
                       : { success: false, message: r?.error || '获取URL失败' });
             });
-          }, 4000); // wait for list to load
+          }, 4000);
+        });
+        break;
+
+      case 'inject_image':
+        chrome.tabs.sendMessage(tabId, { type: 'INJECT_IMAGE', id: 'img', text: step.value, selector: step.target }, (r) => {
+          resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || '图片注入失败' });
         });
         break;
 

@@ -30,6 +30,8 @@ export default defineConfig({
       'https://mp.toutiao.com/*',
       'https://baijiahao.baidu.com/*',
       'https://om.qq.com/*',
+      'https://post.smzdm.com/*',
+      'https://zhiyou.smzdm.com/*',
       'https://juejin.cn/*',
     ],
     side_panel: {

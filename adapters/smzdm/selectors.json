@@ -1,0 +1,19 @@
+{
+  "editor": {
+    "newPostLink": ".release-new",
+    "titleInput": "textarea[placeholder*=\"文章标题\"]",
+    "bodyEditor": ".ProseMirror.z-editor--empty",
+    "addImageBtn": "添加图片",
+    "insertImageBtn": "插入正文",
+    "coverBtn": "添加方图",
+    "coverFileInput": "input[name=\"file\"][accept*=\"image\"]",
+    "setCoverBtn": "设为封面图",
+    "coverConfirmBtn": "确认",
+    "publishBtn": "发布"
+  },
+  "stateTexts": {
+    "loggedOut": ["登录", "账号登录", "手机登录"],
+    "captcha": ["验证码", "安全验证"],
+    "publishSuccess": ["发布成功", "已发布"]
+  }
+}

@@ -24,6 +24,7 @@ PLATFORMS: list[dict] = [
     {"id": "toutiao",  "name": "头条号", "timeout": 180},
     {"id": "baijiahao","name": "百家号", "timeout": 180},
     {"id": "qiehao",   "name": "企鹅号", "timeout": 180},
+    {"id": "smzdm",    "name": "什么值得买", "timeout": 180},
 ]
 
 DEFAULT_TIMEOUT = 150

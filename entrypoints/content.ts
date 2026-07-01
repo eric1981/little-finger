@@ -62,6 +62,11 @@ export default defineContentScript({
         return zhihuImportDocx(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
       }
 
+      // ── Inject image (Pexels + DataTransfer) ──
+      if (m.type === 'INJECT_IMAGE') {
+        return injectImage(m.text || '', m.selector || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
       // ── Get article public URL from management page ──
       if (m.type === 'GET_ARTICLE_URL') {
         return getArticleUrl(m.value || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
@@ -902,10 +907,55 @@ async function getArticleUrl(query: string = '') {
         const link = document.querySelector('table a[href]') || document.querySelector('tr a[href]');
         url = link ? (link as HTMLAnchorElement).href : '';
       }
+    } else if (host.includes('smzdm.com')) {
+      // 什么值得买: match title text in article list
+      if (query) {
+        const matches = Array.from(document.querySelectorAll('a, span, div'))
+          .filter(el => el.textContent?.trim() === query);
+        if (matches.length > 0) {
+          const target = matches[0];
+          const link = target.closest('a') || target.querySelector('a') as HTMLAnchorElement | null;
+          url = link ? link.href : '';
+        }
+      }
+      if (!url) {
+        const link = document.querySelector('a[href*="/p/"]') || document.querySelector('table a[href]');
+        url = link ? (link as HTMLAnchorElement).href : '';
+      }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
     return { success: true, message: url, url };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ─── Generic Image Injection (Pexels → DataTransfer) ───
+
+async function injectImage(query: string, fileInputSelector: string) {
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: 'SEARCH_PEXELS', id: 'img', text: query });
+    if (!resp?.success) return { success: false, error: resp?.error || 'Pexels搜索失败' };
+    const imageUrl = resp.imageUrl;
+    if (!imageUrl) return { success: false, error: '未找到图片' };
+    const imgResp = await fetch(imageUrl);
+    const blob = await imgResp.blob();
+    let file: File;
+    if (blob.type === 'image/jpeg' || blob.type === 'image/png') {
+      file = new File([blob], 'image.jpg', { type: blob.type });
+    } else {
+      file = await convertToJpeg(blob);
+    }
+    let fi = document.querySelector(fileInputSelector || 'input[name="file"]') as HTMLInputElement | null;
+    if (!fi) fi = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement | null;
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; document.body.appendChild(fi); }
+    const dt = new DataTransfer(); dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change', { bubbles: true }));
+    fi.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(2000);
+    return { success: true, message: '图片已注入' };
   } catch (err) {
     return { success: false, error: String(err) };
   }

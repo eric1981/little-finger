@@ -3,6 +3,7 @@ import { ZhihuAdapter, updateZhihuConfig } from '../adapters/zhihu/adapter';
 import { ToutiaoAdapter, updateToutiaoConfig } from '../adapters/toutiao/adapter';
 import { BaijiahaoAdapter, updateBaijiahaoConfig } from '../adapters/baijiahao/adapter';
 import { PenguinAdapter, updatePenguinConfig } from '../adapters/penguin/adapter';
+import { SmzdmAdapter, updateSmzdmConfig } from '../adapters/smzdm/adapter';
 import { executeSteps, executeOneStep } from '../core/executor';
 import { getApiKey } from '../core/api-keys';
 
@@ -90,7 +91,7 @@ async function executeCommand(cmd: {
       const title = cmd.title || cmd.params?.title as string || '无标题';
       const content = cmd.content || cmd.params?.content as string || '';
 
-      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter;
+      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter | SmzdmAdapter;
       let detectUrl: string;
 
       if (cmd.platform === 'zhihu') {
@@ -105,6 +106,9 @@ async function executeCommand(cmd: {
       } else if (cmd.platform === 'qiehao') {
         adapter = new PenguinAdapter();
         detectUrl = 'https://om.qq.com/main';
+      } else if (cmd.platform === 'smzdm') {
+        adapter = new SmzdmAdapter();
+        detectUrl = 'https://post.smzdm.com/';
       } else {
         return { success: false, message: `不支持的平台: ${cmd.platform}`, data: null };
       }
@@ -137,6 +141,7 @@ async function executeCommand(cmd: {
         toutiao: 'https://mp.toutiao.com/profile_v4/graphic/articles',
         baijiahao: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=',
         qiehao: 'https://om.qq.com/main/management/articleManage',
+        smzdm: 'https://zhiyou.smzdm.com/user/article/',
       };
       const mgmtUrl = platformUrls[cmd.platform];
       if (!mgmtUrl) return { success: false, message: `未知平台: ${cmd.platform}`, data: null };
