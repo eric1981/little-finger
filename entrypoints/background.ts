@@ -47,21 +47,20 @@ export default defineBackground(() => {
   }
 
   // ── Side Panel: AI intent parsing ──
-  browser.runtime.onMessage.addListener((msg: unknown) => {
-    const m = msg as { type: string; id: string; text?: string };
+  browser.runtime.onMessage.addListener((msg: unknown, sender) => {
+    const m = msg as { type: string; id: string; text?: string; code?: string };
     if (m.type === 'PARSE_INTENT') return handleParseIntent(m);
     if (m.type === 'SEARCH_PEXELS') return handlePexelsSearch(m);
     if (m.type === 'EXECUTE_IN_MAIN') {
-      const cmd = m as { type: string; id: string; code: string };
+      const tabId = sender.tab?.id;
+      if (!tabId) return { error: 'no tab id' };
       return (async () => {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.id) return { error: 'no active tab' };
         try {
           const [result] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
+            target: { tabId },
             world: 'MAIN',
             func: (code: string) => eval(code),
-            args: [cmd.code],
+            args: [m.code!],
           });
           return result?.result || { error: 'no result' };
         } catch (e: any) {
