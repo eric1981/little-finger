@@ -3,6 +3,7 @@ import { ZhihuAdapter, updateZhihuConfig } from '../adapters/zhihu/adapter';
 import { ToutiaoAdapter, updateToutiaoConfig } from '../adapters/toutiao/adapter';
 import { BaijiahaoAdapter, updateBaijiahaoConfig } from '../adapters/baijiahao/adapter';
 import { executeSteps, executeOneStep } from '../core/executor';
+import { getApiKey } from '../core/api-keys';
 
 let nativePort: chrome.runtime.Port | null = null;
 
@@ -206,13 +207,11 @@ function parseAIJson(text: string): Record<string, unknown> | null {
 
 // ── Pexels Image Search (runs in Background SW to avoid CORS) ──
 
-const PEXELS_KEY = '***REDACTED_PEXELS_KEY***';
-
 async function handlePexelsSearch(m: { type: string; id: string; text?: string }) {
   try {
     const query = m.text || 'abstract';
     const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`;
-    const resp = await fetch(url, { headers: { Authorization: PEXELS_KEY } });
+    const resp = await fetch(url, { headers: { Authorization: await getApiKey('pexels') } });
     if (!resp.ok) return { success: false, error: `Pexels API: ${resp.status}` };
     
     const data = await resp.json();
