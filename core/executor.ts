@@ -47,17 +47,19 @@ export function executeOneStep(
     switch (step.type) {
       case 'navigate':
         chrome.tabs.create({ url: step.target, active: true }, (newTab) => {
-          // Close old tab, use new tab
-          chrome.tabs.remove(tabId, () => {});
-          // Wait for content script injection on new tab
           const newTabId = newTab.id!;
           const start = Date.now();
           const check = () => {
             chrome.tabs.sendMessage(newTabId, { type: 'PING', id: 'nav' }, (r) => {
               if (chrome.runtime.lastError || !r) {
                 if (Date.now() - start < 15000) return setTimeout(check, 500);
-                return resolve({ success: true, message: `导航超时: ${step.target}`, data: { tabId: newTabId } });
+                // Try fallback: update existing tab instead
+                chrome.tabs.remove(newTabId, () => {});
+                chrome.tabs.update(tabId, { url: step.target });
+                return resolve({ success: false, message: `导航超时: ${step.target}` });
               }
+              // Clean up old tab after new one is ready
+              chrome.tabs.remove(tabId, () => {});
               setTimeout(() => resolve({ success: true, message: `导航到 ${step.target}`, data: { tabId: newTabId } }), 2000);
             });
           };
