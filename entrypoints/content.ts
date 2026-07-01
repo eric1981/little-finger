@@ -789,33 +789,31 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 async function bjhImportDocx(base64Content: string, tabId: number) {
   try {
-    // Run hover + click in MAIN world via chrome.scripting
-    if (!tabId) return { success: false, error: '无法获取tabId' };
-
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      world: 'MAIN',
-      func: async () => {
-        const hoverEl = document.querySelector('#edui40_state');
-        if (!hoverEl) return { error: 'hover元素未找到' };
-        hoverEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-        hoverEl.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-        await new Promise(r => setTimeout(r, 1500));
-
-        const btn = [...document.querySelectorAll('div')]
-          .find((d: HTMLDivElement) => d.textContent!.trim() === '导入文档');
-        if (!btn) return { error: '导入文档菜单未找到' };
-        (btn as HTMLElement).click();
-        await new Promise(r => setTimeout(r, 2000));
-
-        const fi = document.querySelector('input[name="file"]');
-        return fi ? { success: true } : { error: '找不到docx上传input' };
-      },
+    // Step 1+2: Run hover + click in MAIN world via Background SW
+    const result = await new Promise<any>((resolve) => {
+      chrome.runtime.sendMessage({ type: 'EXECUTE_IN_MAIN', id: 'bjh_docx', tabId,
+        code: `
+          (async () => {
+            const h = document.querySelector('#edui40_state');
+            if (!h) return { error: 'hover' };
+            const r = h.getBoundingClientRect();
+            ['pointerover','mouseover','mouseenter'].forEach(t => {
+              h.dispatchEvent(new MouseEvent(t, { bubbles:true, clientX:r.left+5, clientY:r.top+5 }));
+            });
+            await new Promise(r => setTimeout(r, 1500));
+            const btn = [...document.querySelectorAll('div')]
+              .find(d => d.textContent.trim() === '导入文档');
+            if (!btn) return { error: '菜单' };
+            btn.click();
+            await new Promise(r => setTimeout(r, 2000));
+            return document.querySelector('input[name="file"]') ? { ok:1 } : { error: 'input' };
+          })()
+        ` }, (r) => resolve(r));
     });
 
-    if (!result?.result?.success) return { success: false, error: result?.result?.error || '导入失败' };
+    if (result?.error) return { success: false, error: result.error };
 
-    // Inject file from isolated world
+    // Step 3: Inject file
     const fi = document.querySelector('input[name="file"]') as HTMLInputElement | null;
     if (!fi) return { success: false, error: '找不到docx上传input' };
 

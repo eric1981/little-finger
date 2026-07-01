@@ -52,20 +52,18 @@ export default defineBackground(() => {
     if (m.type === 'PARSE_INTENT') return handleParseIntent(m);
     if (m.type === 'SEARCH_PEXELS') return handlePexelsSearch(m);
     if (m.type === 'EXECUTE_IN_MAIN') {
-      const tabId = sender.tab?.id;
-      if (!tabId) return { error: 'no tab id' };
+      const cmd = m as { type: string; id: string; code: string; tabId: number };
+      if (!cmd.tabId) return { error: 'no tabId' };
       return (async () => {
         try {
           const [result] = await chrome.scripting.executeScript({
-            target: { tabId },
+            target: { tabId: cmd.tabId },
             world: 'MAIN',
             func: (code: string) => eval(code),
-            args: [m.code!],
+            args: [cmd.code],
           });
           return result?.result || { error: 'no result' };
-        } catch (e: any) {
-          return { error: e.message };
-        }
+        } catch (e: any) { return { error: e.message }; }
       })();
     }
   });
