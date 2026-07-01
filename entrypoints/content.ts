@@ -789,28 +789,34 @@ async function importDocx(base64Content: string, btnSelector: string) {
 
 async function bjhImportDocx(base64Content: string) {
   try {
-    // 1. Click "导入文档" (visible in DOM, no hover needed)
-    const clickResult = await findAndClick('导入文档');
-    if (!clickResult.success) return clickResult;
-    await wait(randomBetween(1500, 2500));
-
-    // 2. Find file input and inject
-    let fi = document.querySelector('input[name="file"][accept*="docx"]') as HTMLInputElement | null
-          || document.querySelector('input[name="file"][accept*=".docx"]') as HTMLInputElement | null
-          || document.querySelector('input[name="file"]') as HTMLInputElement | null;
-    if (!fi) return { success: false, error: '找不到docx上传input' };
-
+    // Convert docx to HTML via mammoth (same as zhihu)
     const binary = atob(base64Content);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const file = new File([blob], 'import.docx', { type: blob.type });
-    const dt = new DataTransfer(); dt.items.add(file);
-    fi.files = dt.files;
-    fi.dispatchEvent(new Event('change', { bubbles: true }));
-    fi.dispatchEvent(new Event('input', { bubbles: true }));
-    await wait(randomBetween(5000, 8000));
-    return { success: true, message: 'docx文件已导入' };
+    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    const html = result.value;
+
+    // Find iframe body
+    const iframe = document.querySelector('#ueditor_0') as HTMLIFrameElement | null;
+    const body = iframe?.contentDocument?.body || iframe?.contentWindow?.document?.body;
+    if (!body) return { success: false, error: '找不到UEditor iframe' };
+
+    // Focus and select all, then paste HTML via ClipboardEvent
+    body.focus();
+    iframe.contentDocument?.execCommand('selectAll', false);
+    await wait(200);
+
+    const dt = new DataTransfer();
+    dt.setData('text/html', html);
+    dt.setData('text/plain', result.value.replace(/<[^>]+>/g, ''));
+    body.dispatchEvent(new ClipboardEvent('paste', {
+      bubbles: true,
+      clipboardData: dt,
+    }));
+    await wait(randomBetween(3000, 5000));
+
+    return { success: true, message: 'docx已粘贴（mammoth→HTML）' };
   } catch (err) {
     return { success: false, error: String(err) };
   }
