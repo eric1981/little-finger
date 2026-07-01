@@ -887,6 +887,21 @@ async function getArticleUrl(query: string = '') {
                   || document.querySelector('tr a[href]');
         url = link ? (link as HTMLAnchorElement).href : '';
       }
+    } else if (host.includes('om.qq.com')) {
+      // 企鹅号: match title text in article list
+      if (query) {
+        const matches = Array.from(document.querySelectorAll('a, span, div, td'))
+          .filter(el => el.textContent?.trim() === query);
+        if (matches.length > 0) {
+          const target = matches[0];
+          const link = target.closest('a') || target.querySelector('a') as HTMLAnchorElement | null;
+          url = link ? link.href : '';
+        }
+      }
+      if (!url) {
+        const link = document.querySelector('table a[href]') || document.querySelector('tr a[href]');
+        url = link ? (link as HTMLAnchorElement).href : '';
+      }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
