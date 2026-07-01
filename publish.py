@@ -30,15 +30,28 @@ MAX_RETRIES = 1  # retry once on timeout/connection error
 
 
 def kill_zombies():
-    """Auto-kill stale native host processes before publishing"""
+    """Auto-kill stale hosts (running > 5s), keep the newest one"""
     try:
         result = subprocess.run(
-            ["pgrep", "-f", "little-finger-host.py"],
+            ["ps", "-eo", "pid,etimes,args"],
             capture_output=True, text=True, timeout=3,
         )
-        for pid in result.stdout.strip().split():
-            if pid:
-                os.kill(int(pid), 9)
+        hosts = []
+        for line in result.stdout.strip().split('\n'):
+            if 'little-finger-host.py' in line:
+                parts = line.split()
+                pid = int(parts[0])
+                age = int(parts[1])  # seconds
+                hosts.append((pid, age))
+        
+        if len(hosts) <= 1:
+            return  # one or zero = keep it
+        
+        # Keep the newest (smallest age), kill the rest
+        hosts.sort(key=lambda x: x[1])
+        for pid, age in hosts[:-1]:
+            if age > 5:  # only kill truly stale ones
+                os.kill(pid, 9)
     except Exception:
         pass
 
@@ -170,6 +183,9 @@ def main():
     if args.dry_run:
         print("[DRY RUN] 跳过发布")
         return
+
+    # 清理僵尸进程（保留最新连接）
+    kill_zombies()
 
     # 发布
     results = {}

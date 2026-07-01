@@ -99,7 +99,15 @@ export interface Step {
        | 'import_docx'
        | 'import_docx_bjh'
        | 'import_docx_zhihu'
-       | 'get_article_url';  // navigate to mgmt page + extract public URL
+       | 'get_article_url';
+  
+  // ═══ 新增 Step 类型需同步修改 4 个文件 ═══
+  // 1. 本文件 (types.ts) — 加 type 字面量
+  // 2. core/executor.ts     — 加 case 分支处理
+  // 3. entrypoints/content.ts — 加 message handler (if direct DOM)
+  // 4. adapters/{platform}/adapter.ts — 在 publish() 中 yield
+  // ═══════════════════════════════════════
+  
   target: string;        // selector, URL, or text to find
   value?: string;        // text to type
   reason: string;
