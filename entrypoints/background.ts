@@ -59,8 +59,21 @@ export default defineBackground(() => {
           const [result] = await chrome.scripting.executeScript({
             target: { tabId: cmd.tabId },
             world: 'MAIN',
-            func: (code: string) => eval(code),
-            args: [cmd.code],
+            func: async () => {
+              const h = document.querySelector('#edui40_state');
+              if (!h) return { error: 'hover' };
+              const r = h.getBoundingClientRect();
+              (['pointerover','mouseover','mouseenter'] as const).forEach(t => {
+                h.dispatchEvent(new MouseEvent(t, { bubbles:true, clientX:r.left+5, clientY:r.top+5 }));
+              });
+              await new Promise(r2 => setTimeout(r2, 1500));
+              const btn = [...document.querySelectorAll('div')]
+                .find(d => d.textContent!.trim() === '导入文档');
+              if (!btn) return { error: 'menu' };
+              (btn as HTMLElement).click();
+              await new Promise(r2 => setTimeout(r2, 2000));
+              return document.querySelector('input[name="file"]') ? { ok:1 } : { error: 'input' };
+            },
           });
           return result?.result || { error: 'no result' };
         } catch (e: any) { return { error: e.message }; }

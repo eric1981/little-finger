@@ -791,24 +791,7 @@ async function bjhImportDocx(base64Content: string, tabId: number) {
   try {
     // Step 1+2: Run hover + click in MAIN world via Background SW
     const result = await new Promise<any>((resolve) => {
-      chrome.runtime.sendMessage({ type: 'EXECUTE_IN_MAIN', id: 'bjh_docx', tabId,
-        code: `
-          (async () => {
-            const h = document.querySelector('#edui40_state');
-            if (!h) return { error: 'hover' };
-            const r = h.getBoundingClientRect();
-            ['pointerover','mouseover','mouseenter'].forEach(t => {
-              h.dispatchEvent(new MouseEvent(t, { bubbles:true, clientX:r.left+5, clientY:r.top+5 }));
-            });
-            await new Promise(r => setTimeout(r, 1500));
-            const btn = [...document.querySelectorAll('div')]
-              .find(d => d.textContent.trim() === '导入文档');
-            if (!btn) return { error: '菜单' };
-            btn.click();
-            await new Promise(r => setTimeout(r, 2000));
-            return document.querySelector('input[name="file"]') ? { ok:1 } : { error: 'input' };
-          })()
-        ` }, (r) => resolve(r));
+      chrome.runtime.sendMessage({ type: 'EXECUTE_IN_MAIN', id: 'bjh_docx', tabId }, (r) => resolve(r));
     });
 
     if (result?.error) return { success: false, error: result.error };
