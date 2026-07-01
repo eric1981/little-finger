@@ -12,20 +12,14 @@ export type StepResult = { success: boolean; message: string; data?: any };
  * Failed step stops execution (except for optional steps and wait_for_login).
  */
 export async function executeSteps(
-  initTabId: number,
+  tabId: number,
   steps: Step[],
   onProgress: (msg: string, type: 'info' | 'success' | 'error' | 'wait') => void
 ): Promise<StepResult> {
-  let currentTabId = initTabId;
   for (const step of steps) {
     onProgress(`⏳ ${step.reason}`, 'info');
 
-    const result = await executeOneStep(currentTabId, step, onProgress);
-    
-    // On navigate, update tabId since we create a new tab
-    if (step.type === 'navigate' && result.data?.tabId) {
-      currentTabId = result.data.tabId;
-    }
+    const result = await executeOneStep(tabId, step, onProgress);
     
     if (!result.success) {
       onProgress(`❌ ${result.message}`, 'error');
@@ -46,24 +40,8 @@ export function executeOneStep(
   return new Promise((resolve) => {
     switch (step.type) {
       case 'navigate':
-        chrome.tabs.create({ url: step.target, active: true }, (newTab) => {
-          const newTabId = newTab.id!;
-          const start = Date.now();
-          const check = () => {
-            chrome.tabs.sendMessage(newTabId, { type: 'PING', id: 'nav' }, (r) => {
-              if (chrome.runtime.lastError || !r) {
-                if (Date.now() - start < 15000) return setTimeout(check, 500);
-                // Try fallback: update existing tab instead
-                chrome.tabs.remove(newTabId, () => {});
-                chrome.tabs.update(tabId, { url: step.target });
-                return resolve({ success: false, message: `导航超时: ${step.target}` });
-              }
-              // Clean up old tab after new one is ready
-              chrome.tabs.remove(tabId, () => {});
-              setTimeout(() => resolve({ success: true, message: `导航到 ${step.target}`, data: { tabId: newTabId } }), 2000);
-            });
-          };
-          setTimeout(check, 2000);
+        chrome.tabs.update(tabId, { url: step.target }, () => {
+          resolve({ success: true, message: `导航到 ${step.target}` });
         });
         break;
 
