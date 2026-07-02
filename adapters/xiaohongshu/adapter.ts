@@ -43,7 +43,9 @@ export class XiaohongshuAdapter {
 
     if (state?.page !== 'editor') {
       yield { type: 'navigate', target: XHS_PUBLISH, reason: '打开发布页面' };
-      yield { type: 'wait', target: '5000', reason: '等待编辑器加载' };
+      yield { type: 'wait', target: '4000', reason: '等待页面加载' };
+      yield { type: 'find_and_click', target: config.newCreation, reason: '点击新的创作' };
+      yield { type: 'wait', target: '4000', reason: '等待编辑器加载' };
     }
 
     // Title
