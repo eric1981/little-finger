@@ -202,8 +202,14 @@ function wordPause(): Promise<void> {
 async function findAndClick(text: string) {
   if (!text) return { success: false, error: 'No text to search for' };
   
-  const el = findByVisibleText(text);
-  if (!el) return { success: false, error: `找不到包含 "${text}" 的按钮或链接` };
+  // CSS selector support (.xxx, #xxx, tag.class)
+  let el: Element | null = null;
+  if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+\.[a-z]/.test(text)) {
+    el = document.querySelector(text);
+  } else {
+    el = findByVisibleText(text);
+  }
+  if (!el) return { success: false, error: '找不到: ' + text };
   
   try {
     const el2 = el as HTMLElement;
