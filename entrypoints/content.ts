@@ -202,9 +202,9 @@ function wordPause(): Promise<void> {
 async function findAndClick(text: string) {
   if (!text) return { success: false, error: 'No text to search for' };
   
-  // CSS selector support (.xxx, #xxx, tag.class)
+  // CSS selector support (.xxx, #xxx, tag.class, compound)
   let el: Element | null = null;
-  if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+\.[a-z]/.test(text)) {
+  if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+[.#\s]/.test(text)) {
     el = document.querySelector(text);
   } else {
     el = findByVisibleText(text);
