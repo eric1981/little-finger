@@ -42,7 +42,7 @@ export class XiaohongshuAdapter {
     yield { type: 'wait', target: '8000', reason: '等待排版完成' };
     yield { type: 'find_and_click', target: config.nextBtn, reason: '点击下一步' };
     yield { type: 'wait', target: '4000', reason: '等待发布弹窗' };
-    yield { type: 'find_and_click', target: 'div button.bg-red', reason: '点击发布' };
+    yield { type: 'key_press', target: 'Enter', reason: '按Enter确认发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
     yield { type: 'get_article_url', target: 'https://creator.xiaohongshu.com/publish/publish?source=&published=true', value: article.title, reason: '获取文章URL' };
   }

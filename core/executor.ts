@@ -188,6 +188,12 @@ export function executeOneStep(
         setTimeout(poll, 500);
         break;
 
+      case 'key_press':
+        sendToContent(tabId, { type: 'KEY_PRESS', id: 'key', text: step.target, value: step.value }, (r) => {
+          resolve({ success: true, message: r?.message || '按键已发送' });
+        });
+        break;
+
       case 'wait_for_login':
         waitForLogin(tabId, step, onProgress).then(resolve);
         break;

@@ -77,6 +77,14 @@ export default defineContentScript({
         return { type: 'PONG', id: m.id };
       }
       
+      // ── Key press (Enter, Escape, etc.) ──
+      if (m.type === 'KEY_PRESS') {
+        const key = m.text || m.value || 'Enter';
+        document.dispatchEvent(new KeyboardEvent('keydown', { key, code: 'Key' + key, keyCode: key === 'Enter' ? 13 : 27, bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keyup', { key, code: 'Key' + key, keyCode: key === 'Enter' ? 13 : 27, bubbles: true }));
+        return { type: 'ACTION_RESULT', id: m.id, success: true, message: '已发送按键: ' + key };
+      }
+      
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
         return executeAction(m as { selector: string; action: string; value?: string }).then(r => ({
