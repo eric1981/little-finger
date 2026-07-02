@@ -214,6 +214,20 @@ async function findAndClick(text: string) {
   let el: Element | null = null;
   if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+[.#\s]/.test(text)) {
     el = document.querySelector(text);
+    // If not found in regular DOM, search inside shadow roots
+    if (!el) {
+      (function findInShadows(roots: (Document|ShadowRoot)[]) {
+        for (const root of roots) {
+          const found = root.querySelector(text);
+          if (found) { el = found; return; }
+          const hosts = root.querySelectorAll('*');
+          for (const h of hosts) {
+            if ((h as any).shadowRoot) findInShadows([(h as any).shadowRoot]);
+            if (el) return;
+          }
+        }
+      })([document]);
+    }
   } else {
     el = findByVisibleText(text);
   }
