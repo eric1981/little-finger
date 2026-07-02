@@ -32,6 +32,7 @@ export default defineConfig({
       'https://om.qq.com/*',
       'https://post.smzdm.com/*',
       'https://zhiyou.smzdm.com/*',
+      'https://creator.xiaohongshu.com/*',
       'https://juejin.cn/*',
     ],
     side_panel: {

@@ -4,6 +4,7 @@ import { ToutiaoAdapter, updateToutiaoConfig } from '../adapters/toutiao/adapter
 import { BaijiahaoAdapter, updateBaijiahaoConfig } from '../adapters/baijiahao/adapter';
 import { PenguinAdapter, updatePenguinConfig } from '../adapters/penguin/adapter';
 import { SmzdmAdapter, updateSmzdmConfig } from '../adapters/smzdm/adapter';
+import { XiaohongshuAdapter, updateXiaohongshuConfig } from '../adapters/xiaohongshu/adapter';
 import { executeSteps, executeOneStep } from '../core/executor';
 import { getApiKey } from '../core/api-keys';
 
@@ -122,7 +123,7 @@ async function executeCommand(cmd: {
       const title = cmd.title || cmd.params?.title as string || '无标题';
       const content = cmd.content || cmd.params?.content as string || '';
 
-      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter | SmzdmAdapter;
+      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter | SmzdmAdapter | XiaohongshuAdapter;
       let detectUrl: string;
 
       if (cmd.platform === 'zhihu') {
@@ -139,7 +140,10 @@ async function executeCommand(cmd: {
         detectUrl = 'https://om.qq.com/main';
       } else if (cmd.platform === 'smzdm') {
         adapter = new SmzdmAdapter();
-        detectUrl = 'https://post.smzdm.com/';
+        detectUrl = 'https://post.smzdm.com';
+      } else if (cmd.platform === 'xiaohongshu') {
+        adapter = new XiaohongshuAdapter();
+        detectUrl = 'https://creator.xiaohongshu.com/new/home';
       } else {
         return { success: false, message: `不支持的平台: ${cmd.platform}`, data: null };
       }
@@ -173,6 +177,7 @@ async function executeCommand(cmd: {
         baijiahao: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=',
         qiehao: 'https://om.qq.com/main/management/articleManage',
         smzdm: 'https://zhiyou.smzdm.com/user/article/',
+        xiaohongshu: 'https://creator.xiaohongshu.com/publish/publish?source=&published=true',
       };
       const mgmtUrl = platformUrls[cmd.platform];
       if (!mgmtUrl) return { success: false, message: `未知平台: ${cmd.platform}`, data: null };

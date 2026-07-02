@@ -939,6 +939,12 @@ async function getArticleUrl(query: string = '') {
         const link = document.querySelector('a[href*="/p/"]') || document.querySelector('table a[href]');
         url = link ? (link as HTMLAnchorElement).href : '';
       }
+    } else if (host.includes('creator.xiaohongshu.com')) {
+      if (query) {
+        const list = Array.from(document.querySelectorAll('a, span, div'));
+        const m = list.find(el => el.textContent?.trim() === query);
+        if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
+      }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
