@@ -1,8 +1,3 @@
-/**
- * Xiaohongshu (小红书) Adapter
- * Flow: home → 新的创作 → title → docx upload or body → 一键排版 → 下一步 → 发布 → URL
- */
-
 import type { Article, DomSnapshot, PageState, Step } from '../../core/types';
 
 const XHS_PUBLISH = 'https://creator.xiaohongshu.com/publish/publish?from=menu&target=article';
@@ -10,7 +5,6 @@ const XHS_PUBLISH = 'https://creator.xiaohongshu.com/publish/publish?from=menu&t
 let config = {
   newCreation: '新的创作',
   titleSelector: 'textarea[placeholder*="输入标题"]',
-  docxUpload: '点击或拖拽上传',
   bodyEditor: '.rich-editor-content',
   autoFormat: '一键排版',
   nextBtn: '下一步',
@@ -40,24 +34,16 @@ export class XiaohongshuAdapter {
     }
 
     yield { type: 'wait_for_login', target: 'creator.xiaohongshu.com', reason: '等待登录小红书' };
-
-    // Title
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
     yield { type: 'wait', target: '1000', reason: '等待标题渲染' };
-
-    // Body — rich editor
     yield { type: 'find_and_type_rich', target: config.bodyEditor, value: article.content, reason: '填入正文' };
     yield { type: 'wait', target: '2000', reason: '等待正文渲染' };
-
-    // Auto format + publish
     yield { type: 'find_and_click', target: config.autoFormat, reason: '点击一键排版' };
     yield { type: 'wait', target: '8000', reason: '等待排版完成' };
     yield { type: 'find_and_click', target: config.nextBtn, reason: '点击下一步' };
     yield { type: 'wait', target: '4000', reason: '等待发布弹窗' };
     yield { type: 'find_and_click', target: config.publishBtn, reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
-
-    // Get URL
     yield { type: 'get_article_url', target: 'https://creator.xiaohongshu.com/publish/publish?source=&published=true', value: article.title, reason: '获取文章URL' };
   }
 }
