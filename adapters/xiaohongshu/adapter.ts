@@ -58,7 +58,7 @@ export class XiaohongshuAdapter {
 
     // Auto format
     yield { type: 'find_and_click', target: config.autoFormat, reason: '点击一键排版' };
-    yield { type: 'wait', target: '3000', reason: '等待排版+弹窗' };
+    yield { type: 'wait', target: '8000', reason: '等待排版完成' };
 
     // Publish
     yield { type: 'find_and_click', target: config.publishBtn, reason: '点击下一步/发布' };
