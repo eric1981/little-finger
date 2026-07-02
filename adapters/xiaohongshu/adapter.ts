@@ -11,6 +11,7 @@ const XHS_PUBLISH = 'https://creator.xiaohongshu.com/publish/publish?from=menu&t
 let config = {
   publishNote: '发布笔记',
   writeArticle: '写长文',
+  newCreation: '新的创作',
   titleSelector: 'textarea[placeholder*="输入标题"]',
   bodyEditor: '.rich-editor-content',
   autoFormat: '一键排版',
@@ -41,9 +42,7 @@ export class XiaohongshuAdapter {
     yield { type: 'wait_for_login', target: 'creator.xiaohongshu.com', reason: '等待登录小红书' };
 
     if (state?.page !== 'editor') {
-      yield { type: 'find_and_click', target: config.publishNote, reason: '点击发布笔记' };
-      yield { type: 'wait', target: '2000', reason: '等待菜单' };
-      yield { type: 'find_and_click', target: config.writeArticle, reason: '点击写长文' };
+      yield { type: 'navigate', target: XHS_PUBLISH, reason: '打开发布页面' };
       yield { type: 'wait', target: '5000', reason: '等待编辑器加载' };
     }
 
