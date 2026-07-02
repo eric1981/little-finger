@@ -127,7 +127,7 @@ def main():
 
     if args.get_url:
         if not args.platform:
-            args.platform = "zhihu,toutiao,baijiahao"
+            args.platform = ",".join(p["id"] for p in PLATFORMS)
         title = args.title or ""
         content = ""
     elif args.docx:
