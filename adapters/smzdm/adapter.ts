@@ -60,18 +60,18 @@ export class SmzdmAdapter {
     yield { type: 'find_and_type_rich', target: '正文', value: article.content, reason: '填入正文' };
     yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
 
-    // Body image (must)
+    // Body image (must) — increased waits for slow network
     yield { type: 'find_and_click', target: config.addImageBtn, reason: '点击添加图片' };
-    yield { type: 'wait', target: '1000', reason: '等待图片弹窗' };
+    yield { type: 'wait', target: '2000', reason: '等待图片弹窗' };
     yield { type: 'inject_image', target: config.fileInputSelector, value: article.title, reason: '注入正文插图' };
     yield { type: 'find_and_click', target: config.insertImageBtn, reason: '点击插入正文' };
-    yield { type: 'wait', target: '2000', reason: '等待图片插入' };
+    yield { type: 'wait', target: '3000', reason: '等待图片插入' };
 
-    // Cover image (4-step)
+    // Cover image (4-step) — increased waits
     yield { type: 'find_and_click', target: config.coverBtn, reason: '点击添加方图' };
-    yield { type: 'wait', target: '1000', reason: '等待封面弹窗' };
+    yield { type: 'wait', target: '2000', reason: '等待封面弹窗' };
     yield { type: 'inject_image', target: config.fileInputSelector, value: article.title, reason: '注入封面图' };
-    yield { type: 'wait', target: '2000', reason: '等待图片上传渲染' };
+    yield { type: 'wait', target: '4000', reason: '等待图片上传渲染' };
     yield { type: 'find_and_click', target: config.setCoverBtn, reason: '点击设为封面图' };
     yield { type: 'wait', target: '3000', reason: '等待封面设置' };
     yield { type: 'find_and_click', target: config.coverConfirmBtn, reason: '点击确认' };

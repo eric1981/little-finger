@@ -44,26 +44,27 @@ export class ToutiaoAdapter {
 
     yield { type: 'wait_for_login', target: 'toutiao.com', reason: '等待登录头条号' };
 
+    // Key waits increased for slow network
     if (state?.page !== 'editor') {
       yield { type: 'navigate', target: TOUTIAO_PUBLISH, reason: '打开发文编辑器' };
     }
 
-    yield { type: 'wait', target: '5000', reason: '等待编辑器完全加载' };
+    yield { type: 'wait', target: '8000', reason: '等待编辑器加载' };
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
     
     if (article.docxB64) {
       yield { type: 'import_docx', target: config.importDocxBtn, value: article.docxB64, reason: '导入docx文件' };
-      yield { type: 'wait', target: '6000', reason: '等待docx解析' };
+      yield { type: 'wait', target: '10000', reason: '等待docx解析' };
     } else {
       yield { type: 'find_and_type_rich', target: config.contentText, value: article.content, reason: '填入正文' };
-      yield { type: 'wait', target: '2000', reason: '等待编辑器处理内容' };
+      yield { type: 'wait', target: '3000', reason: '等待编辑器处理内容' };
     }
 
     yield { type: 'upload_cover', target: article.title, reason: '搜索并上传封面图' };
-    yield { type: 'wait', target: '2000', reason: '等待封面上传完成' };
+    yield { type: 'wait', target: '3000', reason: '等待封面上传完成' };
 
     yield { type: 'find_and_click', target: config.previewText, reason: '点击预览并发布' };
-    yield { type: 'wait', target: '3000', reason: '等待预览弹窗' };
+    yield { type: 'wait', target: '4000', reason: '等待预览弹窗' };
     yield { type: 'find_and_click', target: config.confirmText, reason: '确认发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
     yield { type: 'get_article_url', target: 'https://mp.toutiao.com/profile_v4/graphic/articles', value: article.title, reason: '获取文章URL' };
