@@ -980,21 +980,20 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      await wait(3000);
-      // API approach (like social-monitor)
-      try {
-        const resp = await fetch('/janus/douyin/creator/pc/work_list?page_size=5&page_num=1&status=0', { credentials: 'include' });
-        const data = await resp.json();
-        const items = data?.data?.work_list || data?.data?.items || [];
-        if (items.length > 0) {
-          url = items[0].share_url || (items[0].aweme_id ? 'https://www.douyin.com/video/' + items[0].aweme_id : '');
+      // Poll for article list to load (async render)
+      for (let i = 0; i < 10; i++) {
+        const links = document.querySelectorAll('a[href*="/creator-micro/"][href*="article"], a[href*="/note/"], a[href*="aweme_id"]');
+        for (const lk of links) {
+          const href = (lk as HTMLAnchorElement).href;
+          if (href && !href.includes('/manage') && !url) url = href;
         }
-      } catch (e) { /* API failed, try DOM */ }
-      // Fallback
-      if (!url && query) {
-        const all = document.querySelectorAll('a, [class*="title"]');
-        const m = Array.from(all).find(el => el.textContent?.includes(query));
-        if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
+        if (url) break;
+        if (query) {
+          const all = document.querySelectorAll('a, div, span');
+          const m = Array.from(all).find(el => el.textContent?.includes(query));
+          if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; if (url) break; }
+        }
+        await wait(1000);
       }
     }
 
