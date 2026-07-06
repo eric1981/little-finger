@@ -23,10 +23,10 @@ PLATFORMS: list[dict] = [
     {"id": "zhihu",    "name": "知乎",   "timeout": 180},
     {"id": "toutiao",  "name": "头条号", "timeout": 180},
     {"id": "baijiahao","name": "百家号", "timeout": 180},
-    {"id": "qiehao",   "name": "企鹅号", "timeout": 180},
-    {"id": "smzdm",    "name": "什么值得买", "timeout": 180},
-    {"id": "xiaohongshu", "name": "小红书", "timeout": 180},
-    {"id": "douyin", "name": "抖音", "timeout": 180},
+    {"id": "qiehao",   "name": "企鹅号", "timeout": 90},
+    {"id": "smzdm",    "name": "什么值得买", "timeout": 90},
+    {"id": "xiaohongshu", "name": "小红书", "timeout": 90},
+    {"id": "douyin", "name": "抖音", "timeout": 90},
 ]
 
 DEFAULT_TIMEOUT = 150
@@ -102,14 +102,14 @@ def publish(platform: dict, title: str, content: str, docxB64: str, action: str 
         if resp.get("success"):
             return resp
 
-        # Only retry on timeout/connection errors
+        # Only retry on timeout/connection errors, not login failures
         error = resp.get("error", resp.get("message", ""))
-        if "Timeout" not in error and "connect" not in error.lower():
+        if "Timeout" not in error and "connect" not in error.lower() and "timeout" not in error.lower():
             return resp
 
         if attempt < MAX_RETRIES:
             kill_zombies()
-            time.sleep(3)
+            time.sleep(8)  # wait for Chrome to re-establish native connection
 
     return resp
 

@@ -221,7 +221,7 @@ async function waitForLogin(
   return new Promise((resolve) => {
     let count = 0;
     const poll = () => {
-      if (count++ > 120) { resolve({ success: false, message: '登录等待超时' }); return; }
+      if (count++ > 45) { resolve({ success: false, message: '登录等待超时' }); return; }
       
       sendToContent(tabId, { type: 'SAMPLE_DOM', id: 'login_poll' }, (r) => {
         if (chrome.runtime.lastError || !r?.data) { setTimeout(poll, 2000); return; }
