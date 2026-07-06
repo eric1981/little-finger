@@ -33,6 +33,7 @@ export default defineConfig({
       'https://post.smzdm.com/*',
       'https://zhiyou.smzdm.com/*',
       'https://creator.xiaohongshu.com/*',
+      'https://creator.douyin.com/*',
       'https://juejin.cn/*',
     ],
     side_panel: {

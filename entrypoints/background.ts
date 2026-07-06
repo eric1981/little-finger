@@ -5,6 +5,7 @@ import { BaijiahaoAdapter, updateBaijiahaoConfig } from '../adapters/baijiahao/a
 import { PenguinAdapter, updatePenguinConfig } from '../adapters/penguin/adapter';
 import { SmzdmAdapter, updateSmzdmConfig } from '../adapters/smzdm/adapter';
 import { XiaohongshuAdapter, updateXiaohongshuConfig } from '../adapters/xiaohongshu/adapter';
+import { DouyinAdapter, updateDouyinConfig } from '../adapters/douyin/adapter';
 import { executeSteps, executeOneStep } from '../core/executor';
 import { getApiKey } from '../core/api-keys';
 
@@ -123,7 +124,7 @@ async function executeCommand(cmd: {
       const title = cmd.title || cmd.params?.title as string || '无标题';
       const content = cmd.content || cmd.params?.content as string || '';
 
-      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter | SmzdmAdapter | XiaohongshuAdapter;
+      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter | SmzdmAdapter | XiaohongshuAdapter | DouyinAdapter;
       let detectUrl: string;
 
       if (cmd.platform === 'zhihu') {
@@ -144,6 +145,9 @@ async function executeCommand(cmd: {
       } else if (cmd.platform === 'xiaohongshu') {
         adapter = new XiaohongshuAdapter();
         detectUrl = 'https://creator.xiaohongshu.com/new/home';
+      } else if (cmd.platform === 'douyin') {
+        adapter = new DouyinAdapter();
+        detectUrl = 'https://creator.douyin.com/creator-micro/content/upload';
       } else {
         return { success: false, message: `不支持的平台: ${cmd.platform}`, data: null };
       }
@@ -178,6 +182,7 @@ async function executeCommand(cmd: {
         qiehao: 'https://om.qq.com/main/management/articleManage',
         smzdm: 'https://zhiyou.smzdm.com/user/article/',
         xiaohongshu: 'https://creator.xiaohongshu.com/publish/publish?source=&published=true',
+        douyin: 'https://creator.douyin.com/creator-micro/content/manage',
       };
       const mgmtUrl = platformUrls[cmd.platform];
       if (!mgmtUrl) return { success: false, message: `未知平台: ${cmd.platform}`, data: null };

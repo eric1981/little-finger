@@ -85,6 +85,11 @@ export default defineContentScript({
         return { type: 'ACTION_RESULT', id: m.id, success: true, message: '已发送按键: ' + key };
       }
       
+      // ── Inject file into file input (base64 content) ──
+      if (m.type === 'INJECT_FILE') {
+        return injectFile(m.value || '', m.selector || '').then(r => ({ type: 'ACTION_RESULT', id: m.id, ...r }));
+      }
+      
       // ── Low-level: raw selector action ──
       if (m.type === 'EXECUTE_ACTION') {
         return executeAction(m as { selector: string; action: string; value?: string }).then(r => ({
@@ -682,8 +687,10 @@ async function uploadCoverImage(query: string, coverInputSelector: string = '') 
         '//*[@id="bjhNewsCover"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]',
         document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
       ).singleNodeValue as Element;
-    } else if (host.includes('toutiao.com')) {
-      clickable = document.querySelector('.article-cover-add');
+    } else if (host.includes('creator.xiaohongshu.com')) {
+      if (query) { const list = Array.from(document.querySelectorAll('a, span, div')); const m = list.find(el => el.textContent?.trim() === query); if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; } }
+    } else if (host.includes('creator.douyin.com')) {
+      if (query) { const list = Array.from(document.querySelectorAll('a, span, div')); const m = list.find(el => el.textContent?.trim() === query); if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; } }
     }
     
     if (!clickable) return { success: false, error: '找不到封面按钮（平台: ' + host + '）' };
@@ -973,6 +980,8 @@ async function getArticleUrl(query: string = '') {
         const m = list.find(el => el.textContent?.trim() === query);
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
+    } else if (host.includes('creator.douyin.com')) {
+      if (query) { const list = Array.from(document.querySelectorAll('a, span, div')); const m = list.find(el => el.textContent?.trim() === query); if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; } }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
@@ -1010,6 +1019,31 @@ async function injectImage(query: string, fileInputSelector: string) {
     fi.dispatchEvent(new Event('input', { bubbles: true }));
     await wait(2000);
     return { success: true, message: '图片已注入' };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+async function injectFile(b64: string, selector: string) {
+  try {
+    let fi: HTMLInputElement | null = null;
+    if (selector) {
+      fi = document.querySelector(selector) as HTMLInputElement;
+      if (!fi) (function find(r) { if (fi) return; const f = r.querySelector(selector); if (f) { fi = f; return; } r.querySelectorAll('*').forEach(function(h) { if (h.shadowRoot) find(h.shadowRoot); }); })(document);
+    }
+    if (!fi) fi = document.querySelector('input[accept*="docx"]') || document.querySelector('input[name="file"]:not([accept*="image"]):not([accept*="video"])');
+    if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx'; document.body.appendChild(fi); }
+
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const file = new File([blob], 'import.docx', { type: blob.type });
+    const dt = new DataTransfer(); dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change', { bubbles: true }));
+    fi.dispatchEvent(new Event('input', { bubbles: true }));
+    return { success: true, message: '文件已注入' };
   } catch (err) {
     return { success: false, error: String(err) };
   }

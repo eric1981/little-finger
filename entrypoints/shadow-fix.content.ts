@@ -1,3 +1,5 @@
+import { defineContentScript } from 'wxt/sandbox';
+
 export default defineContentScript({
   matches: ['https://creator.xiaohongshu.com/*', 'https://post.smzdm.com/*', 'https://zhiyou.smzdm.com/*', 'https://baijiahao.baidu.com/*', 'https://mp.toutiao.com/*'],
   runAt: 'document_start',

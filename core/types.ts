@@ -102,7 +102,8 @@ export interface Step {
        | 'get_article_url'
        | 'inject_image'
        | 'wait_for_page'
-       | 'key_press';        // dispatch KeyboardEvent (Enter, Escape, etc.)
+       | 'key_press'
+       | 'inject_file';     // inject base64 content into file input (docx/images)
   
   // ═══ 新增 Step 类型需同步修改 4 个文件 ═══
   // 1. 本文件 (types.ts) — 加 type 字面量

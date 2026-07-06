@@ -194,6 +194,12 @@ export function executeOneStep(
         });
         break;
 
+      case 'inject_file':
+        sendToContent(tabId, { type: 'INJECT_FILE', id: 'file', value: step.value, selector: step.target }, (r) => {
+          resolve(r?.success ? { success: true, message: r.message } : { success: false, message: r?.error || '文件注入失败' });
+        });
+        break;
+
       case 'wait_for_login':
         waitForLogin(tabId, step, onProgress).then(resolve);
         break;
