@@ -106,7 +106,7 @@ def publish(platform: dict, title: str, content: str, docxB64: str, action: str 
         error = resp.get("error", resp.get("message", ""))
         if "URL" in error or "未找到" in error or "url" in error.lower():
             resp["success"] = True
-            resp["data"] = resp.get("data", {})
+            resp["data"] = resp.get("data") or {}
             resp["data"]["url"] = "(获取失败)"
             return resp
 

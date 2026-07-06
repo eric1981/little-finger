@@ -196,7 +196,7 @@ async function executeCommand(cmd: {
         baijiahao: 'https://baijiahao.baidu.com/builder/rc/content?currentPage=1&pageSize=10&search=&type=&collection=&startDate=&endDate=',
         qiehao: 'https://om.qq.com/main/management/articleManage',
         smzdm: 'https://zhiyou.smzdm.com/user/article/',
-        xiaohongshu: 'https://creator.xiaohongshu.com/publish/publish?source=&published=true',
+        xiaohongshu: 'https://creator.xiaohongshu.com/new/note-manager',
         douyin: 'https://creator.douyin.com/creator-micro/content/manage',
       };
       const mgmtUrl = platformUrls[cmd.platform];

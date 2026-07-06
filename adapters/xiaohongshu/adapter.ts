@@ -44,7 +44,7 @@ export class XiaohongshuAdapter {
     yield { type: 'wait', target: '6000', reason: '等待发布弹窗渲染' };
     yield { type: 'find_and_click', target: 'button.bg-red', reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
-    yield { type: 'get_article_url', target: 'https://creator.xiaohongshu.com/publish/publish?source=&published=true', value: article.title, reason: '获取文章URL' };
+    yield { type: 'get_article_url', target: 'https://creator.xiaohongshu.com/new/note-manager', value: article.title, reason: '获取文章URL' };
   }
 }
 
