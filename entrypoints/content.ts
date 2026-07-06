@@ -688,10 +688,8 @@ async function uploadCoverImage(query: string, coverInputSelector: string = '') 
         '//*[@id="bjhNewsCover"]/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div[2]',
         document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
       ).singleNodeValue as Element;
-    } else if (host.includes('creator.xiaohongshu.com')) {
-      if (query) { const list = Array.from(document.querySelectorAll('a, span, div')); const m = list.find(el => el.textContent?.trim() === query); if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; } }
-    } else if (host.includes('creator.douyin.com')) {
-      if (query) { const list = Array.from(document.querySelectorAll('a, span, div')); const m = list.find(el => el.textContent?.trim() === query); if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; } }
+    } else if (host.includes('toutiao.com')) {
+      clickable = document.querySelector('.article-cover-add');
     }
     
     if (!clickable) return { success: false, error: '找不到封面按钮（平台: ' + host + '）' };
@@ -982,15 +980,21 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      // Try title match first, then grab first link from content list
-      if (query) {
-        const all = document.querySelectorAll('a, div[role="link"], span[role="link"], [class*="title"]');
+      await wait(3000);
+      // API approach (like social-monitor)
+      try {
+        const resp = await fetch('/janus/douyin/creator/pc/work_list?page_size=5&page_num=1&status=0', { credentials: 'include' });
+        const data = await resp.json();
+        const items = data?.data?.work_list || data?.data?.items || [];
+        if (items.length > 0) {
+          url = items[0].share_url || (items[0].aweme_id ? 'https://www.douyin.com/video/' + items[0].aweme_id : '');
+        }
+      } catch (e) { /* API failed, try DOM */ }
+      // Fallback
+      if (!url && query) {
+        const all = document.querySelectorAll('a, [class*="title"]');
         const m = Array.from(all).find(el => el.textContent?.includes(query));
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
-      }
-      if (!url) {
-        const link = document.querySelector('a[href*="/creator-micro/"]:not([href*="manage"])') as HTMLAnchorElement | null;
-        url = link ? link.href : '';
       }
     }
 
