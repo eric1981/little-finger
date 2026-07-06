@@ -11,7 +11,7 @@ let config = {
   importBtn: '一键导入',
   titleSelector: 'input[placeholder*="请输入文章标题"]',
   coverBtn: '点击上传封面图',
-  confirmBtn: 'button[class*="completeButton"]',
+  confirmBtn: 'button.semi-button.semi-button-primary',
   publishBtn: 'button.button-dhlUZE.primary-cECiOJ',
   loggedOutSignals: ['登录', '扫码登录', '手机登录'],
 };
