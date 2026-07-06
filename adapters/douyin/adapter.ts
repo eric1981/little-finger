@@ -1,8 +1,3 @@
-/**
- * Douyin (抖音) Article Adapter
- * Flow: upload page → 一键导入 → docx inject → editor → title → cover → publish
- */
-
 import type { Article, DomSnapshot, PageState, Step } from '../../core/types';
 
 const DY_UPLOAD = 'https://creator.douyin.com/creator-micro/content/upload?default-tab=5';
@@ -10,9 +5,8 @@ const DY_UPLOAD = 'https://creator.douyin.com/creator-micro/content/upload?defau
 let config = {
   importBtn: '一键导入',
   titleSelector: 'input[placeholder*="请输入文章标题"]',
-  coverBtn: '点击上传封面图',
-  confirmBtn: 'button.semi-button.semi-button-primary',
-  publishBtn: 'button.button-dhlUZE.primary-cECiOJ',
+  aiCover: 'AI 配图',
+  publishText: '发布',
   loggedOutSignals: ['登录', '扫码登录', '手机登录'],
 };
 
@@ -45,11 +39,12 @@ export class DouyinAdapter {
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
     yield { type: 'wait', target: '1000', reason: '等待标题渲染' };
 
-    // Cover — inject directly into hidden file input, skip dialog
-    yield { type: 'inject_image', target: 'input[type="file"][accept*="image"]', value: article.title, reason: '直接注入封面图' };
-    yield { type: 'wait', target: '5000', reason: '等待上传完成' };
+    // AI cover generation
+    yield { type: 'find_and_click', target: config.aiCover, reason: '点击AI配图' };
+    yield { type: 'wait', target: '20000', reason: '等待AI生成封面（20s）' };
 
-    yield { type: 'find_and_click', target: config.publishBtn, reason: '点击发布' };
+    // Publish
+    yield { type: 'find_and_click', target: config.publishText, reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
     yield { type: 'get_article_url', target: 'https://creator.douyin.com/creator-micro/content/manage', value: article.title, reason: '获取文章URL' };
   }
