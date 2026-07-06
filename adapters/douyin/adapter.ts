@@ -36,29 +36,24 @@ export class DouyinAdapter {
     yield { type: 'wait_for_login', target: 'creator.douyin.com', reason: '等待登录抖音' };
 
     if (state?.page !== 'editor') {
-      // Click 一键导入 → open upload area → inject docx
       yield { type: 'find_and_click', target: config.importBtn, reason: '点击一键导入' };
       yield { type: 'wait', target: '3000', reason: '等待上传区域' };
       yield { type: 'inject_file', target: 'input[accept*="docx"]', value: article.docxB64 || '', reason: '注入docx文件' };
       yield { type: 'wait', target: '10000', reason: '等待docx解析' };
     }
 
-    // Title
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
     yield { type: 'wait', target: '1000', reason: '等待标题渲染' };
 
-    // Cover — click upload, inject Pexels, confirm
     yield { type: 'find_and_click', target: config.coverBtn, reason: '点击上传封面图' };
-    yield { type: 'wait', target: '2000', reason: '等待封面上传弹窗' };
+    yield { type: 'wait', target: '3000', reason: '等待封面弹窗' };
     yield { type: 'inject_image', target: 'input[accept*="image"]', value: article.title, reason: '注入封面图' };
-    yield { type: 'wait', target: '3000', reason: '等待封面预览' };
-    yield { type: 'find_and_click', target: '完成', reason: '点击完成' };
-    yield { type: 'wait', target: '3000', reason: '等待封面设置' };
+    yield { type: 'wait', target: '5000', reason: '等待封面预览渲染' };
+    yield { type: 'find_and_click', target: config.confirmBtn, reason: '点击完成' };
+    yield { type: 'wait', target: '2000', reason: '等待封面设置' };
 
-    // Publish
     yield { type: 'find_and_click', target: config.publishBtn, reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
-
     yield { type: 'get_article_url', target: 'https://creator.douyin.com/creator-micro/content/manage', value: article.title, reason: '获取文章URL' };
   }
 }
