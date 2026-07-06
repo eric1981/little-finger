@@ -982,7 +982,16 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      if (query) { const list = Array.from(document.querySelectorAll('a')); const m = list.find(el => el.textContent?.includes(query)); if (m) url = (m as HTMLAnchorElement).href; }
+      // Try title match first, then grab first link from content list
+      if (query) {
+        const all = document.querySelectorAll('a, div[role="link"], span[role="link"], [class*="title"]');
+        const m = Array.from(all).find(el => el.textContent?.includes(query));
+        if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
+      }
+      if (!url) {
+        const link = document.querySelector('a[href*="/creator-micro/"]:not([href*="manage"])') as HTMLAnchorElement | null;
+        url = link ? link.href : '';
+      }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
