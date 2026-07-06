@@ -11,7 +11,7 @@ let config = {
   importBtn: '一键导入',
   titleSelector: 'input[placeholder*="请输入文章标题"]',
   coverBtn: '点击上传封面图',
-  confirmBtn: '完成',
+  confirmBtn: 'button[class*="completeButton"]',
   publishBtn: 'button.button-dhlUZE.primary-cECiOJ',
   loggedOutSignals: ['登录', '扫码登录', '手机登录'],
 };
@@ -47,7 +47,7 @@ export class DouyinAdapter {
 
     yield { type: 'find_and_click', target: config.coverBtn, reason: '点击上传封面图' };
     yield { type: 'wait', target: '3000', reason: '等待封面弹窗' };
-    yield { type: 'inject_image', target: 'input[accept*="image"]', value: article.title, reason: '注入封面图' };
+    yield { type: 'inject_image', target: 'input[type="file"][accept*="image"]', value: article.title, reason: '注入封面图' };
     yield { type: 'wait', target: '5000', reason: '等待封面预览渲染' };
     yield { type: 'find_and_click', target: config.confirmBtn, reason: '点击完成' };
     yield { type: 'wait', target: '2000', reason: '等待封面设置' };
