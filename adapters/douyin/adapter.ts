@@ -45,12 +45,9 @@ export class DouyinAdapter {
     yield { type: 'type_selector', target: config.titleSelector, value: article.title, reason: '填入标题' };
     yield { type: 'wait', target: '1000', reason: '等待标题渲染' };
 
-    yield { type: 'find_and_click', target: config.coverBtn, reason: '点击上传封面图' };
-    yield { type: 'wait', target: '3000', reason: '等待封面弹窗' };
-    yield { type: 'inject_image', target: 'input[type="file"][accept*="image"]', value: article.title, reason: '注入封面图' };
-    yield { type: 'wait', target: '5000', reason: '等待封面预览渲染' };
-    yield { type: 'find_and_click', target: config.confirmBtn, reason: '点击完成' };
-    yield { type: 'wait', target: '2000', reason: '等待封面设置' };
+    // Cover — inject directly into hidden file input, skip dialog
+    yield { type: 'inject_image', target: 'input[type="file"][accept*="image"]', value: article.title, reason: '直接注入封面图' };
+    yield { type: 'wait', target: '5000', reason: '等待上传完成' };
 
     yield { type: 'find_and_click', target: config.publishBtn, reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
