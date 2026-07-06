@@ -982,7 +982,7 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      if (query) { const list = Array.from(document.querySelectorAll('a, span, div')); const m = list.find(el => el.textContent?.trim() === query); if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; } }
+      if (query) { const list = Array.from(document.querySelectorAll('a')); const m = list.find(el => el.textContent?.includes(query)); if (m) url = (m as HTMLAnchorElement).href; }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };

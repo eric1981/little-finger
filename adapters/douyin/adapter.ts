@@ -46,6 +46,8 @@ export class DouyinAdapter {
     // Publish
     yield { type: 'find_and_click', target: config.publishText, reason: '点击发布' };
     yield { type: 'wait', target: '5000', reason: '等待发布完成' };
+
+    // Get URL via API (like social-monitor)
     yield { type: 'get_article_url', target: 'https://creator.douyin.com/creator-micro/content/manage', value: article.title, reason: '获取文章URL' };
   }
 }
