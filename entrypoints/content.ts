@@ -218,8 +218,9 @@ async function findAndClick(text: string) {
   // CSS selector support (.xxx, #xxx, tag.class, compound)
   let el: Element | null = null;
   if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+[.#\s]/.test(text)) {
-    el = document.querySelector(text);
-    // If not found in regular DOM, search inside shadow roots
+    const matches = document.querySelectorAll(text);
+    el = matches.length > 0 ? matches[matches.length - 1] : null; // last visible
+    if (!el) (function find(r) { if (el) return; r.querySelectorAll('*').forEach(function(h) { if (h.shadowRoot) find(h.shadowRoot); }); })(document);
     if (!el) {
       (function findInShadows(roots: (Document|ShadowRoot)[]) {
         for (const root of roots) {

@@ -51,7 +51,8 @@ export class DouyinAdapter {
     yield { type: 'find_and_click', target: config.coverBtn, reason: '点击上传封面图' };
     yield { type: 'wait', target: '2000', reason: '等待封面上传弹窗' };
     yield { type: 'inject_image', target: 'input[accept*="image"]', value: article.title, reason: '注入封面图' };
-    yield { type: 'find_and_click', target: config.confirmBtn, reason: '点击确定' };
+    yield { type: 'wait', target: '3000', reason: '等待封面预览' };
+    yield { type: 'find_and_click', target: 'button.semi-button.semi-button-primary:last-of-type', reason: '点击确定（最后一个primary按钮）' };
     yield { type: 'wait', target: '3000', reason: '等待封面设置' };
 
     // Publish
