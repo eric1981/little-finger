@@ -980,21 +980,25 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      // Poll for article list to load (async render)
-      for (let i = 0; i < 10; i++) {
-        const links = document.querySelectorAll('a[href*="/creator-micro/"][href*="article"], a[href*="/note/"], a[href*="aweme_id"]');
-        for (const lk of links) {
-          const href = (lk as HTMLAnchorElement).href;
-          if (href && !href.includes('/manage') && !url) url = href;
-        }
-        if (url) break;
-        if (query) {
-          const all = document.querySelectorAll('a, div, span');
-          const m = Array.from(all).find(el => el.textContent?.includes(query));
-          if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; if (url) break; }
-        }
-        await wait(1000);
+      // 1. Search by title
+      const si = document.querySelector('input[placeholder*="搜索"]') as HTMLInputElement | null 
+              || document.querySelector('input[type="text"][placeholder*="文章"]') as HTMLInputElement | null;
+      if (si && query) {
+        si.value = query;
+        si.dispatchEvent(new Event('input', { bubbles: true }));
+        si.dispatchEvent(new Event('change', { bubbles: true }));
+        await wait(2000);
       }
+      // 2. Click first matching article title
+      if (query) {
+        const all = document.querySelectorAll('a, span, div');
+        const m = Array.from(all).find(el => el.textContent?.includes(query));
+        if (m) (m as HTMLElement).click();
+        await wait(3000);
+      }
+      // 3. Extract ID from URL and build public URL
+      const idMatch = location.href.match(/work-detail\/(\d+)/) || location.href.match(/article[=/](\d+)/);
+      if (idMatch) url = 'https://www.douyin.com/article/' + idMatch[1];
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
