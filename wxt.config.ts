@@ -39,5 +39,8 @@ export default defineConfig({
     side_panel: {
       default_path: 'sidepanel/index.html',
     },
+    externally_connectable: {
+      matches: [],  // block external websites from detecting the extension
+    },
   },
 });
