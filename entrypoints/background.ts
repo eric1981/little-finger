@@ -53,6 +53,21 @@ export default defineBackground(() => {
     const m = msg as { type: string; id: string; text?: string; code?: string };
     if (m.type === 'PARSE_INTENT') return handleParseIntent(m);
     if (m.type === 'SEARCH_PEXELS') return handlePexelsSearch(m);
+    if (m.type === 'GET_DOUYIN_URL') {
+      // Find new tab opened with work-detail URL, extract ID
+      return (async () => {
+        for (let i = 0; i < 15; i++) {
+          const tabs = await chrome.tabs.query({});
+          const detail = tabs.find(t => t.url?.includes('work-detail'));
+          if (detail?.url) {
+            const idMatch = detail.url.match(/work-detail\/(\d+)/);
+            if (idMatch) return { url: 'https://www.douyin.com/article/' + idMatch[1] };
+          }
+          await new Promise(r => setTimeout(r, 500));
+        }
+        return { error: 'no new tab' };
+      })();
+    }
     if (m.type === 'EXECUTE_IN_MAIN') {
       const cmd = m as { type: string; id: string; code: string; tabId: number };
       if (!cmd.tabId) return { error: 'no tabId' };

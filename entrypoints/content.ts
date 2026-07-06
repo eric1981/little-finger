@@ -980,22 +980,16 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      // Extract article ID from React fiber (video-card key is the aweme_id)
-      const card = document.querySelector('[class*="video-card"]') as HTMLElement | null;
-      if (card) {
-        const fiberKey = Object.keys(card).find(k => k.startsWith('__reactFiber'));
-        if (fiberKey) {
-          const fiber = (card as any)[fiberKey];
-          let node = fiber;
-          // Walk up to find the item wrapper (level 1 from leaf is the key holder)
-          for (let d = 0; d < 5 && node; d++) {
-            const key = node.key;
-            if (key && /^\d{15,25}$/.test(String(key))) {
-              url = 'https://www.douyin.com/article/' + key;
-              break;
-            }
-            node = node.return;
-          }
+      // Click article card, background detects new tab URL
+      if (query) {
+        const titles = document.querySelectorAll('[class*="info-title"],[class*="title-text"]');
+        const m = Array.from(titles).find(el => el.textContent?.includes(query));
+        if (m) {
+          const card = (m as HTMLElement).closest('[class*="video-card"]') as HTMLElement;
+          if (card) card.click();
+          // Background will find the new tab with work-detail URL
+          const resp = await chrome.runtime.sendMessage({ type: 'GET_DOUYIN_URL', query });
+          if (resp?.url) url = resp.url;
         }
       }
     }
