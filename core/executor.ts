@@ -17,20 +17,18 @@ export async function executeSteps(
   steps: Step[],
   onProgress: (msg: string, type: 'info' | 'success' | 'error' | 'wait') => void
 ): Promise<StepResult> {
+  let lastResult: StepResult = { success: true, message: '完成' };
   for (const step of steps) {
     onProgress(`⏳ ${step.reason}`, 'info');
-
     const result = await executeOneStep(tabId, step, onProgress);
-    
+    lastResult = result;
     if (!result.success) {
       onProgress(`❌ ${result.message}`, 'error');
       return result;
     }
     onProgress(`✅ ${result.message}`, 'success');
   }
-
-  onProgress('🎉 任务完成', 'success');
-  return { success: true, message: '完成' };
+  return lastResult;
 }
 
 export function executeOneStep(
