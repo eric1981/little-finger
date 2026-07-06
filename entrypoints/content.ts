@@ -975,11 +975,17 @@ async function getArticleUrl(query: string = '') {
       }
     } else if (host.includes('creator.xiaohongshu.com')) {
       if (query) {
-        const list = Array.from(document.querySelectorAll('a, span, div'));
-        const m = list.find(el => el.textContent?.trim() === query);
-        if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
+        const cards = document.querySelectorAll('.note-card');
+        for (const card of cards) {
+          const title = card.querySelector('.note-card__title');
+          if (title?.textContent?.includes(query)) {
+            const impression = card.getAttribute('data-impression') || '';
+            const idMatch = impression.match(/noteId":"([^"]+)/);
+            if (idMatch) url = 'https://www.xiaohongshu.com/explore/' + idMatch[1];
+            break;
+          }
+        }
       }
-    } else if (host.includes('creator.douyin.com')) {
       // Click article card, background detects new tab URL
       if (query) {
         const titles = document.querySelectorAll('[class*="info-title"],[class*="title-text"]');
