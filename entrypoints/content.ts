@@ -980,16 +980,22 @@ async function getArticleUrl(query: string = '') {
         if (m) { const lk = m.closest('a') || m.querySelector('a'); url = lk ? (lk as HTMLAnchorElement).href : ''; }
       }
     } else if (host.includes('creator.douyin.com')) {
-      // Find and click article by title in the content list
+      // Find article by title in list, click to open detail page
       if (query) {
-        for (let i = 0; i < 8; i++) {
-          const all = document.querySelectorAll('a, span, div');
+        for (let i = 0; i < 10; i++) {
+          const all = document.querySelectorAll('a, span, div, td');
           const m = Array.from(all).find(el => el.textContent?.includes(query));
-          if (m) { (m as HTMLElement).click(); await wait(3000); break; }
+          if (m) {
+            const tgt = m.closest('a') || m.closest('[class*="row"]') || m.closest('[class*="item"]') || m;
+            (tgt as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            (tgt as HTMLElement).dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            (tgt as HTMLElement).click();
+            await wait(4000);
+            break;
+          }
           await wait(1000);
         }
       }
-      // Extract ID from URL
       const idMatch = location.href.match(/work-detail\/(\d+)/);
       if (idMatch) url = 'https://www.douyin.com/article/' + idMatch[1];
     }
