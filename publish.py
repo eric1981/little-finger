@@ -102,8 +102,15 @@ def publish(platform: dict, title: str, content: str, docxB64: str, action: str 
         if resp.get("success"):
             return resp
 
-        # Only retry on timeout/connection errors, not login failures
+        # URL fetch failure is not a publishing failure
         error = resp.get("error", resp.get("message", ""))
+        if "URL" in error or "未找到" in error or "url" in error.lower():
+            resp["success"] = True
+            resp["data"] = resp.get("data", {})
+            resp["data"]["url"] = "(获取失败)"
+            return resp
+
+        # Only retry on timeout/connection errors
         if "Timeout" not in error and "connect" not in error.lower() and "timeout" not in error.lower():
             return resp
 
