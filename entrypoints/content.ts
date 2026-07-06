@@ -985,19 +985,33 @@ async function getArticleUrl(query: string = '') {
           const titles = document.querySelectorAll('[class*="info-title"],[class*="title-text"]');
           const m = Array.from(titles).find(el => el.textContent?.includes(query));
           if (m) {
-            const card = (m as HTMLElement).closest('[class*="video-card"]') || 
-                         (m as HTMLElement).closest('[class*="card"]') || m;
-            (card as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            (card as HTMLElement).dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-            (card as HTMLElement).click();
-            await wait(4000);
+            // Find card container, extract ID from its data attributes
+            const card = (m as HTMLElement).closest('[class*="video-card"]') as HTMLElement;
+            if (card) {
+              // search card and children for data-* with numeric ID
+              const all = [card, ...card.querySelectorAll('*')];
+              for (const el of all) {
+                for (const attr of (el as HTMLElement).attributes || []) {
+                  if (/^\d{15,20}$/.test(attr.value)) { url = 'https://www.douyin.com/article/' + attr.value; break; }
+                }
+                if (url) break;
+              }
+              // fallback: extract from card class or onclick attribute
+              if (!url) {
+                const onclick = card.getAttribute('onclick') || '';
+                const idFromClick = onclick.match(/\d{15,20}/);
+                if (idFromClick) url = 'https://www.douyin.com/article/' + idFromClick[0];
+              }
+            }
             break;
           }
           await wait(1000);
         }
       }
-      const idMatch = location.href.match(/work-detail\/(\d+)/);
-      if (idMatch) url = 'https://www.douyin.com/article/' + idMatch[1];
+      // If DOM extraction failed, try clicking and checking new tabs
+      if (!url) {
+        await wait(2000);
+      }
     }
 
     if (!url) return { success: false, error: '未找到文章链接' };
