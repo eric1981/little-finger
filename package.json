@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "wxt",
     "dev:chrome": "wxt -b chrome",
-    "build": "wxt build",
-    "build:chrome": "wxt build -b chrome",
+    "build": "tsc --noEmit && wxt build",
+    "build:chrome": "tsc --noEmit && wxt build -b chrome",
     "zip": "wxt zip",
     "zip:chrome": "wxt zip -b chrome",
     "typecheck": "tsc --noEmit"
