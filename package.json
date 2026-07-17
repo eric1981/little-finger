@@ -21,5 +21,12 @@
     "@wxt-dev/module-vue": "^1.0.0",
     "typescript": "^5.3.0",
     "wxt": "^0.19.29"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "spawn-sync@1.0.15": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.25.12": true,
+    "vue-demi@0.14.10": true
   }
 }

@@ -1,3 +1,4 @@
+/// <reference types="wxt/sandbox" />
 import { defineContentScript } from 'wxt/sandbox';
 import * as mammoth from 'mammoth';
 
@@ -220,15 +221,16 @@ async function findAndClick(text: string) {
   if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+[.#\s]/.test(text)) {
     const matches = document.querySelectorAll(text);
     el = matches.length > 0 ? matches[matches.length - 1] : null; // last visible
-    if (!el) (function find(r) { if (el) return; r.querySelectorAll('*').forEach(function(h) { if (h.shadowRoot) find(h.shadowRoot); }); })(document);
+    if (!el) (function find(r: Document | ShadowRoot) { if (el) return; r.querySelectorAll('*').forEach(function(h) { const sr = (h as Element & { shadowRoot: ShadowRoot | null }).shadowRoot; if (sr) find(sr); }); })(document);
     if (!el) {
       (function findInShadows(roots: (Document|ShadowRoot)[]) {
         for (const root of roots) {
           const found = root.querySelector(text);
-          if (found) { el = found; return; }
+          if (found) { el = found as Element; return; }
           const hosts = root.querySelectorAll('*');
           for (const h of hosts) {
-            if ((h as any).shadowRoot) findInShadows([(h as any).shadowRoot]);
+            const sr = (h as Element & { shadowRoot: ShadowRoot | null }).shadowRoot;
+            if (sr) findInShadows([sr]);
             if (el) return;
           }
         }
@@ -271,22 +273,22 @@ async function findAndType(labelOrPlaceholder: string, value: string) {
   let el: HTMLElement | null = null;
 
   // 1. Try placeholder match
-  el = findByPlaceholder(labelOrPlaceholder);
+  el = findByPlaceholder(labelOrPlaceholder) as HTMLElement | null;
   
   // 2. Try label match
-  if (!el) el = findByLabel(labelOrPlaceholder);
+  if (!el) el = findByLabel(labelOrPlaceholder) as HTMLElement | null;
   
   // 3. Try contenteditable (rich text editor like Zhihu)
-  if (!el) el = findContentEditable(labelOrPlaceholder);
+  if (!el) el = findContentEditable(labelOrPlaceholder) as HTMLElement | null;
   
   // 4. Try visible text match (input/textarea)
-  if (!el) el = findByVisibleText(labelOrPlaceholder);
+  if (!el) el = findByVisibleText(labelOrPlaceholder) as HTMLElement | null;
   
   // 5. Try any input near matching text
   if (!el) {
     const labelEl = findByVisibleText(labelOrPlaceholder);
     if (labelEl) {
-      el = labelEl.closest('div, form, fieldset, section')?.querySelector('input, textarea, [contenteditable="true"]') as HTMLElement | null;
+      el = (labelEl.closest('div, form, fieldset, section')?.querySelector('input, textarea, [contenteditable="true"]') || null) as HTMLElement | null;
     }
   }
   
@@ -1044,8 +1046,8 @@ async function injectFile(b64: string, selector: string) {
   try {
     let fi: HTMLInputElement | null = null;
     if (selector) {
-      fi = document.querySelector(selector) as HTMLInputElement;
-      if (!fi) (function find(r) { if (fi) return; const f = r.querySelector(selector); if (f) { fi = f; return; } r.querySelectorAll('*').forEach(function(h) { if (h.shadowRoot) find(h.shadowRoot); }); })(document);
+      fi = document.querySelector(selector) as HTMLInputElement | null;
+      if (!fi) (function find(r: Document | ShadowRoot) { if (fi) return; const f = r.querySelector(selector) as HTMLInputElement | null; if (f) { fi = f; return; } r.querySelectorAll('*').forEach(function(h) { const sr = (h as Element & { shadowRoot: ShadowRoot | null }).shadowRoot; if (sr) find(sr); }); })(document);
     }
     if (!fi) fi = document.querySelector('input[accept*="docx"]') || document.querySelector('input[name="file"]:not([accept*="image"]):not([accept*="video"])');
     if (!fi) { fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx'; document.body.appendChild(fi); }

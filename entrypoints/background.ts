@@ -8,8 +8,11 @@ import { XiaohongshuAdapter, updateXiaohongshuConfig } from '../adapters/xiaohon
 import { DouyinAdapter, updateDouyinConfig } from '../adapters/douyin/adapter';
 import { executeSteps, executeOneStep } from '../core/executor';
 import { getApiKey } from '../core/api-keys';
+import type { DomSnapshot, PageState } from '../core/types';
 
 let nativePort: chrome.runtime.Port | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingCommands = 0;
 
 export default defineBackground(() => {
   console.log('[LF:BG] Service Worker started');
@@ -18,38 +21,10 @@ export default defineBackground(() => {
   loadSelectorConfigs();
 
   // ── Native Messaging: bridge to agent (Hermes) ──
-  try {
-    nativePort = chrome.runtime.connectNative('com.littlefinger');
-    
-    nativePort.onMessage.addListener(async (msg: unknown) => {
-      const cmd = msg as {
-        _id?: string; action: string; platform: string;
-        title?: string; content?: string; params?: Record<string, unknown>;
-      };
-      console.log('[LF:BG] Native command:', cmd.action, cmd.platform);
-      
-      const result = await executeCommand(cmd);
-      
-      nativePort?.postMessage({
-        _id: cmd._id, success: result.success,
-        message: result.message, data: result.data,
-      });
-    });
-    
-    nativePort.onDisconnect.addListener(() => {
-      console.log('[LF:BG] Native host disconnected, reconnecting in 5s...');
-      setTimeout(() => {
-        try { nativePort = chrome.runtime.connectNative('com.littlefinger'); } catch {}
-      }, 5000);
-    });
-    
-    console.log('[LF:BG] Native Messaging connected');
-  } catch (err) {
-    console.warn('[LF:BG] Native Messaging not available:', err);
-  }
+  connectNative();
 
   // ── Side Panel: AI intent parsing ──
-  browser.runtime.onMessage.addListener((msg: unknown, sender) => {
+  browser.runtime.onMessage.addListener((msg: unknown, sender: unknown) => {
     const m = msg as { type: string; id: string; text?: string; code?: string };
     if (m.type === 'PARSE_INTENT') return handleParseIntent(m);
     if (m.type === 'SEARCH_PEXELS') return handlePexelsSearch(m);
@@ -102,13 +77,76 @@ export default defineBackground(() => {
   });
 });
 
+// ── Native Messaging connection (with proper re-binding on reconnect) ──
+
+function connectNative(): void {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  try {
+    nativePort = chrome.runtime.connectNative('com.littlefinger');
+
+    nativePort.onMessage.addListener(async (msg: unknown) => {
+      const cmd = msg as {
+        _id?: string; action: string; platform: string;
+        title?: string; content?: string; params?: Record<string, unknown>;
+      };
+      console.log('[LF:BG] Native command:', cmd.action, cmd.platform);
+
+      pendingCommands++;
+      try {
+        const result = await executeCommand(cmd);
+        nativePort?.postMessage({
+          _id: cmd._id, success: result.success,
+          message: result.message, data: result.data,
+        });
+      } catch (err) {
+        // Should not happen — executeCommand has its own try/catch — but be defensive
+        nativePort?.postMessage({
+          _id: cmd._id, success: false,
+          message: `Background error: ${String(err)}`, data: null,
+        });
+      } finally {
+        pendingCommands--;
+      }
+    });
+
+    nativePort.onDisconnect.addListener(() => {
+      const lastErr = chrome.runtime.lastError;
+      console.warn('[LF:BG] Native host disconnected',
+        lastErr ? `(${lastErr.message})` : '',
+        pendingCommands > 0 ? `with ${pendingCommands} pending command(s)` : '',
+        '— reconnecting in 5s...');
+      nativePort = null;
+      // Drain pending command responses with error so CLI doesn't wait until timeout
+      // (Cannot recover the original _id here — host/CLI will time out, which is acceptable)
+      scheduleReconnect();
+    });
+
+    console.log('[LF:BG] Native Messaging connected');
+  } catch (err) {
+    console.warn('[LF:BG] Native Messaging not available:', err);
+    scheduleReconnect();
+  }
+}
+
+function scheduleReconnect(): void {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectNative();
+  }, 5000);
+}
+
 // ── Command Execution (shared by Native + Side Panel) ──
 
 async function loadSelectorConfigs() {
   // Load overrides from chrome.storage (populated by Side Panel config UI)
   const stored = await chrome.storage.local.get('selector_overrides');
   const overrides: Record<string, Record<string, string>> = stored.selector_overrides || {};
-  
+
   if (overrides.zhihu) {
     updateZhihuConfig({
       titleSelector: overrides.zhihu.titleSelector,
@@ -117,7 +155,7 @@ async function loadSelectorConfigs() {
       confirmText: overrides.zhihu.confirmText,
     });
   }
-  
+
   if (overrides.toutiao) {
     updateToutiaoConfig({
       titleSelector: overrides.toutiao.titleSelector,
@@ -126,65 +164,73 @@ async function loadSelectorConfigs() {
       contentText: overrides.toutiao.contentText,
     });
   }
-  
+
   console.log('[LF:BG] Selector configs loaded', overrides);
+}
+
+type PublishAdapter =
+  | ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter
+  | SmzdmAdapter | XiaohongshuAdapter | DouyinAdapter;
+
+function resolveAdapter(platform: string): { adapter: PublishAdapter; detectUrl: string } | { error: string } {
+  if (platform === 'zhihu')    return { adapter: new ZhihuAdapter(),    detectUrl: 'https://www.zhihu.com' };
+  if (platform === 'toutiao')  return { adapter: new ToutiaoAdapter(),  detectUrl: 'https://mp.toutiao.com/profile_v4/index' };
+  if (platform === 'baijiahao')return { adapter: new BaijiahaoAdapter(),detectUrl: 'https://baijiahao.baidu.com/builder/rc/home' };
+  if (platform === 'qiehao')   return { adapter: new PenguinAdapter(),  detectUrl: 'https://om.qq.com/main' };
+  if (platform === 'smzdm')    return { adapter: new SmzdmAdapter(),    detectUrl: 'https://post.smzdm.com' };
+  if (platform === 'xiaohongshu') return { adapter: new XiaohongshuAdapter(), detectUrl: 'https://creator.xiaohongshu.com/new/home' };
+  if (platform === 'douyin')   return { adapter: new DouyinAdapter(),   detectUrl: 'https://creator.douyin.com/creator-micro/content/upload' };
+  return { error: `不支持的平台: ${platform}` };
 }
 
 async function executeCommand(cmd: {
   action: string; platform: string;
   title?: string; content?: string; params?: Record<string, unknown>;
 }) {
+  let tabId: number | null = null;
+  let shouldCloseTabOnFailure = false;
+
   try {
     if (cmd.action === 'publish_article') {
       const title = cmd.title || cmd.params?.title as string || '无标题';
       const content = cmd.content || cmd.params?.content as string || '';
 
-      let adapter: ZhihuAdapter | ToutiaoAdapter | BaijiahaoAdapter | PenguinAdapter | SmzdmAdapter | XiaohongshuAdapter | DouyinAdapter;
-      let detectUrl: string;
-
-      if (cmd.platform === 'zhihu') {
-        adapter = new ZhihuAdapter();
-        detectUrl = 'https://www.zhihu.com';
-      } else if (cmd.platform === 'toutiao') {
-        adapter = new ToutiaoAdapter();
-        detectUrl = 'https://mp.toutiao.com/profile_v4/index';
-      } else if (cmd.platform === 'baijiahao') {
-        adapter = new BaijiahaoAdapter();
-        detectUrl = 'https://baijiahao.baidu.com/builder/rc/home';
-      } else if (cmd.platform === 'qiehao') {
-        adapter = new PenguinAdapter();
-        detectUrl = 'https://om.qq.com/main';
-      } else if (cmd.platform === 'smzdm') {
-        adapter = new SmzdmAdapter();
-        detectUrl = 'https://post.smzdm.com';
-      } else if (cmd.platform === 'xiaohongshu') {
-        adapter = new XiaohongshuAdapter();
-        detectUrl = 'https://creator.xiaohongshu.com/new/home';
-      } else if (cmd.platform === 'douyin') {
-        adapter = new DouyinAdapter();
-        detectUrl = 'https://creator.douyin.com/creator-micro/content/upload';
-      } else {
-        return { success: false, message: `不支持的平台: ${cmd.platform}`, data: null };
-      }
+      const resolved = resolveAdapter(cmd.platform);
+      if ('error' in resolved) return { success: false, message: resolved.error, data: null };
+      const { adapter, detectUrl } = resolved;
 
       const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
       if (!tab.id) return { success: false, message: '无法创建标签页', data: null };
+      tabId = tab.id;
+      shouldCloseTabOnFailure = true;
 
-      let state: { page: string; ready: boolean; details: string } | undefined;
+      let state: PageState | undefined;
       try {
-        chrome.tabs.update(tab.id, { url: detectUrl, active: true });
+        await chrome.tabs.update(tabId, { url: detectUrl, active: true });
         await sleep(2000);
-        const domResp = await sendToTab(tab.id, { type: 'SAMPLE_DOM', id: 'detect' });
+        const domResp = await sendToTab(tabId, { type: 'SAMPLE_DOM', id: 'detect' });
         if (domResp?.data) {
-          state = adapter.detectState(domResp.data);
+          // domResp.data is loosely typed from content script — validate shape before trusting
+          const d = domResp.data as Partial<DomSnapshot>;
+          if (d && typeof d.url === 'string' && Array.isArray(d.signals)) {
+            state = adapter.detectState(d as DomSnapshot);
+          } else {
+            console.warn('[LF:BG] Malformed DOM sample, proceeding without state');
+          }
         }
-      } catch { /* proceed without state */ }
+      } catch (err) {
+        // proceed without state — do NOT silently swallow; log for diagnostics
+        console.warn('[LF:BG] State detection failed, proceeding without state:', err);
+      }
 
       const docxB64 = cmd.params?.docxB64 as string | undefined;
       const steps = Array.from(adapter.publish({ title, content, publishType: 'public', docxB64 }, state));
-      const result = await executeSteps(tab.id, steps, (msg, type) => {
+      const result = await executeSteps(tabId, steps, (msg, type) => {
         console.log(`[LF:BG] ${type}: ${msg}`);
       });
+
+      // Publish succeeded — leave tab open so user can verify / manage it
+      if (result.success) shouldCloseTabOnFailure = false;
 
       return { success: result.success, message: result.message, data: { title } };
     }
@@ -203,20 +249,35 @@ async function executeCommand(cmd: {
       if (!mgmtUrl) return { success: false, message: `未知平台: ${cmd.platform}`, data: null };
 
       const tab = await chrome.tabs.create({ url: mgmtUrl, active: true });
+      if (!tab.id) return { success: false, message: '无法创建标签页', data: null };
+      tabId = tab.id;
+      shouldCloseTabOnFailure = true;
       await sleep(5000);
 
       const urlResult = await executeOneStep(
-        tab.id!, 
-        { type: 'get_article_url', target: mgmtUrl, value: cmd.title || '', reason: '' }, 
+        tab.id,
+        { type: 'get_article_url', target: mgmtUrl, value: cmd.title || '', reason: '' },
         (msg, type) => console.log(`[LF:BG] ${type}: ${msg}`)
       );
-      return urlResult.success ? { success: true, message: urlResult.message, data: urlResult.data }
-                               : { success: false, message: urlResult.message, data: null };
+      if (urlResult.success) shouldCloseTabOnFailure = false;
+      return urlResult.success
+        ? { success: true, message: urlResult.message, data: urlResult.data }
+        : { success: false, message: urlResult.message, data: null };
     }
 
     return { success: false, message: `不支持: ${cmd.action} on ${cmd.platform}`, data: null };
   } catch (err) {
     return { success: false, message: String(err), data: null };
+  } finally {
+    // P2.2: Close tab on failure to prevent tab accumulation
+    if (shouldCloseTabOnFailure && tabId !== null) {
+      try {
+        await chrome.tabs.remove(tabId);
+        console.log(`[LF:BG] Closed failed tab ${tabId}`);
+      } catch (err) {
+        // Tab may already be closed by user — ignore
+      }
+    }
   }
 }
 
@@ -276,13 +337,17 @@ function parseAIJson(text: string): Record<string, unknown> | null {
 async function handlePexelsSearch(m: { type: string; id: string; text?: string }) {
   try {
     const query = m.text || 'abstract';
+    const apiKey = await getApiKey('pexels');
+    if (!apiKey) {
+      return { success: false, error: '未配置 Pexels API Key（在 Side Panel → ⚙ 中设置）' };
+    }
     const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=square&size=large`;
-    const resp = await fetch(url, { headers: { Authorization: await getApiKey('pexels') } });
+    const resp = await fetch(url, { headers: { Authorization: apiKey } });
     if (!resp.ok) return { success: false, error: `Pexels API: ${resp.status}` };
-    
+
     const data = await resp.json();
     if (!data.photos?.length) return { success: false, error: '无搜索结果' };
-    
+
     return {
       success: true,
       imageUrl: data.photos[0].src.large,

@@ -8,6 +8,32 @@ import { sendToContent } from './fallback-channel';
 
 export type StepResult = { success: boolean; message: string; data?: any };
 
+// ── Retry helper ──
+// Some platform pages have animation/transition delays where an element briefly
+// can't be clicked right after navigation. A single retry with a short delay
+// recovers most transient failures without multiplying total runtime.
+const RETRY_STEPS = new Set([
+  'find_and_click',
+  'find_and_type',
+  'find_and_type_rich',
+  'type_selector',
+  'upload_cover',
+  'inject_image',
+]);
+
+async function executeOneStepWithRetry(
+  tabId: number,
+  step: Step,
+  onProgress: (msg: string, type: 'info' | 'success' | 'error' | 'wait') => void,
+): Promise<StepResult> {
+  const first = await executeOneStep(tabId, step, onProgress);
+  if (first.success || !RETRY_STEPS.has(step.type)) return first;
+  // Brief delay before retry (let animation/settle finish)
+  onProgress(`↻ ${step.reason} (retrying...)`, 'wait');
+  await new Promise(r => setTimeout(r, 1500));
+  return executeOneStep(tabId, step, onProgress);
+}
+
 /**
  * Execute a list of adapter steps sequentially on the given tab.
  * Failed step stops execution (except for optional steps and wait_for_login).
@@ -20,7 +46,7 @@ export async function executeSteps(
   let lastResult: StepResult = { success: true, message: '完成' };
   for (const step of steps) {
     onProgress(`⏳ ${step.reason}`, 'info');
-    const result = await executeOneStep(tabId, step, onProgress);
+    const result = await executeOneStepWithRetry(tabId, step, onProgress);
     lastResult = result;
     if (!result.success) {
       onProgress(`❌ ${result.message}`, 'error');

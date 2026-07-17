@@ -1,5 +1,6 @@
+import { getApiKey } from './api-keys';
+
 const PEXELS_API = 'https://api.pexels.com/v1/search';
-const PEXELS_KEY = '***REDACTED_PEXELS_KEY***';
 
 interface PexelsPhoto {
   id: number;
@@ -9,9 +10,14 @@ interface PexelsPhoto {
 
 export async function searchCoverImage(query: string): Promise<string | null> {
   try {
+    const apiKey = await getApiKey('pexels');
+    if (!apiKey) {
+      console.warn('[LF:pexels] No API key configured (set via Side Panel → ⚙ → API Keys → pexels)');
+      return null;
+    }
     const url = `${PEXELS_API}?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`;
     const resp = await fetch(url, {
-      headers: { Authorization: PEXELS_KEY },
+      headers: { Authorization: apiKey },
     });
     if (!resp.ok) return null;
     const data = await resp.json();

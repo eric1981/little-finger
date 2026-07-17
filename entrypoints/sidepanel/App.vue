@@ -15,6 +15,7 @@ const chatContainer = ref<HTMLElement | null>(null);
 
 // AI Settings
 const apiKey = ref('');
+const pexelsApiKey = ref('');
 const showSettings = ref(false);
 const aiMode = ref(false);
 
@@ -27,13 +28,17 @@ const selectorOverrides = ref<Record<string, Record<string, string>>>({
 });
 
 onMounted(async () => {
-  const stored = await chrome.storage.local.get('deepseek_api_key');
+  const stored = await chrome.storage.local.get(['deepseek_api_key', 'api_keys']);
   if (stored.deepseek_api_key) {
     apiKey.value = stored.deepseek_api_key as string;
     aiMode.value = true;
   }
+  const apiKeys = (stored.api_keys as Record<string, string> | undefined) || {};
+  if (apiKeys.pexels) pexelsApiKey.value = apiKeys.pexels;
   status.value = 'ready';
-  message.value = aiMode.value ? 'AI 模式就绪' : 'Little Finger 已就绪 (点击 ⚙ 配置 AI)';
+  const aiStatus = aiMode.value ? 'AI 模式就绪' : 'AI 未配置';
+  const pexelsStatus = pexelsApiKey.value ? ' · Pexels ✓' : ' · Pexels ✗';
+  message.value = `${aiStatus}${pexelsStatus}`;
 });
 
 // ── DOM Sampling ──
@@ -115,8 +120,20 @@ function parseCommand(input: string): { action: string; text?: string; value?: s
 async function saveApiKey() {
   await chrome.storage.local.set({ deepseek_api_key: apiKey.value });
   aiMode.value = !!apiKey.value;
+
+  // Save Pexels key into api_keys map (consumed by core/api-keys.ts → getApiKey)
+  const existing = ((await chrome.storage.local.get('api_keys')).api_keys as Record<string, string> | undefined) || {};
+  if (pexelsApiKey.value.trim()) {
+    existing.pexels = pexelsApiKey.value.trim();
+  } else {
+    delete existing.pexels;
+  }
+  await chrome.storage.local.set({ api_keys: existing });
+
   showSettings.value = false;
-  message.value = apiKey.value ? 'AI 模式已启用' : 'AI 模式已关闭';
+  const aiStatus = aiMode.value ? 'AI 模式已启用' : 'AI 模式已关闭';
+  const pexelsStatus = pexelsApiKey.value ? ' · Pexels ✓' : ' · Pexels ✗';
+  message.value = `${aiStatus}${pexelsStatus}`;
   status.value = 'ready';
 }
 
@@ -375,6 +392,8 @@ function handleKeydown(e: KeyboardEvent) {
     <div v-if="showSettings" class="settings-panel">
       <label>DeepSeek API Key</label>
       <input v-model="apiKey" type="password" placeholder="sk-..." />
+      <label>Pexels API Key <span style="color:#999">(用于封面图搜索)</span></label>
+      <input v-model="pexelsApiKey" type="password" placeholder="留空则禁用封面图自动搜索" />
       <button class="btn-save" @click="saveApiKey">保存</button>
       <p class="hint-text">Key 仅存储在本地浏览器中</p>
       
