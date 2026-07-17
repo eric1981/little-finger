@@ -9,9 +9,11 @@ Example:
   python3 little-finger-cli.py '{"action":"publish_article","platform":"zhihu","title":"Test","content":"Hello"}'
 
 Writes command to ~/.little-finger/command.json atomically and polls for result.
+Each command gets a unique _id; the result is only accepted if _id matches,
+preventing stale results from a previous command being misread.
 """
 
-import sys, json, os, time
+import sys, json, os, time, uuid
 from pathlib import Path
 
 CMD_DIR = Path.home() / '.little-finger'
@@ -49,6 +51,11 @@ def main():
 
     CMD_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Assign a unique _id so we can distinguish our result from stale ones.
+    # The extension's background.ts already echoes _id back in its response.
+    cmd_id = cmd.get("_id") or uuid.uuid4().hex[:12]
+    cmd["_id"] = cmd_id
+
     # Clear stale result from previous run
     try:
         RESULT_FILE.unlink()
@@ -58,13 +65,19 @@ def main():
     # Write command atomically so host never reads a half-written file
     atomic_write_json(CMD_FILE, cmd)
 
-    # Poll for result
+    # Poll for result — only accept if _id matches our command
     start = time.time()
     while time.time() - start < TIMEOUT:
         if RESULT_FILE.exists():
             try:
                 with open(RESULT_FILE, encoding='utf-8') as f:
                     result = json.load(f)
+                # Verify _id matches — if not, it's a stale result from a
+                # previous command; ignore it and keep waiting.
+                rid = result.get("_id")
+                if rid is not None and rid != cmd_id:
+                    time.sleep(0.5)
+                    continue
                 # Clean up result file
                 try:
                     RESULT_FILE.unlink()
