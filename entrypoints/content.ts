@@ -213,31 +213,51 @@ function wordPause(): Promise<void> {
 
 // ─── High-Level Actions ───
 
-async function findAndClick(text: string) {
-  if (!text) return { success: false, error: 'No text to search for' };
-  
+/**
+ * Find an element by CSS selector or visible text.
+ * Searches top document + shadow DOM. Returns null if not found.
+ * Extracted from findAndClick so it can be polled for SPA rendering delays.
+ */
+function findElementForClick(text: string): Element | null {
   // CSS selector support (.xxx, #xxx, tag.class, compound)
-  let el: Element | null = null;
   if (text.startsWith('.') || text.startsWith('#') || text.startsWith('[') || /^[a-z]+[.#\s]/.test(text)) {
     const matches = document.querySelectorAll(text);
-    el = matches.length > 0 ? matches[matches.length - 1] : null; // last visible
-    if (!el) (function find(r: Document | ShadowRoot) { if (el) return; r.querySelectorAll('*').forEach(function(h) { const sr = (h as Element & { shadowRoot: ShadowRoot | null }).shadowRoot; if (sr) find(sr); }); })(document);
-    if (!el) {
+    if (matches.length > 0) return matches[matches.length - 1]; // last visible
+    let found: Element | null = null;
+    (function find(r: Document | ShadowRoot) { if (found) return; r.querySelectorAll('*').forEach(function(h) { const sr = (h as Element & { shadowRoot: ShadowRoot | null }).shadowRoot; if (sr) find(sr); }); })(document);
+    if (!found) {
       (function findInShadows(roots: (Document|ShadowRoot)[]) {
         for (const root of roots) {
-          const found = root.querySelector(text);
-          if (found) { el = found as Element; return; }
+          const f = root.querySelector(text);
+          if (f) { found = f as Element; return; }
           const hosts = root.querySelectorAll('*');
           for (const h of hosts) {
             const sr = (h as Element & { shadowRoot: ShadowRoot | null }).shadowRoot;
             if (sr) findInShadows([sr]);
-            if (el) return;
+            if (found) return;
           }
         }
       })([document]);
     }
-  } else {
-    el = findByVisibleText(text);
+    return found;
+  }
+  return findByVisibleText(text);
+}
+
+async function findAndClick(text: string) {
+  if (!text) return { success: false, error: 'No text to search for' };
+
+  // Poll for up to 5s — handles SPA rendering delays where the button
+  // hasn't been rendered by React/Vue yet right after content input.
+  // First attempt is immediate (no delay); subsequent attempts wait 500ms.
+  const POLL_TIMEOUT = 5000;
+  const POLL_INTERVAL = 500;
+  const t0 = Date.now();
+  let el: Element | null = null;
+  while (Date.now() - t0 < POLL_TIMEOUT) {
+    el = findElementForClick(text);
+    if (el) break;
+    await wait(POLL_INTERVAL);
   }
   if (!el) return { success: false, error: '找不到: ' + text };
   
